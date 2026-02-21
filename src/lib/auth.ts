@@ -1,43 +1,11 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
-import type { Role } from "@/generated/prisma/enums";
-
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      email: string;
-      name: string;
-      role: Role;
-      departmentId: string | null;
-      managerId: string | null;
-    };
-  }
-  interface User {
-    role: Role;
-    departmentId: string | null;
-    managerId: string | null;
-  }
-}
-
-declare module "@auth/core/jwt" {
-  interface JWT {
-    id: string;
-    role: Role;
-    departmentId: string | null;
-    managerId: string | null;
-  }
-}
+import { authConfig } from "@/lib/auth.config";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma) as never,
-  session: { strategy: "jwt", maxAge: 24 * 60 * 60 }, // 24 hours
-  pages: {
-    signIn: "/login",
-  },
+  ...authConfig,
   providers: [
     Credentials({
       name: "credentials",
@@ -71,33 +39,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id!;
-        token.role = user.role;
-        token.departmentId = user.departmentId;
-        token.managerId = user.managerId;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      session.user.id = token.id as string;
-      session.user.role = token.role as Role;
-      session.user.departmentId = token.departmentId as string | null;
-      session.user.managerId = token.managerId as string | null;
-      return session;
-    },
-    async authorized({ auth, request }) {
-      const isLoggedIn = !!auth?.user;
-      const isOnLogin = request.nextUrl.pathname.startsWith("/login");
-
-      if (isOnLogin) {
-        if (isLoggedIn) return Response.redirect(new URL("/dashboard", request.nextUrl));
-        return true;
-      }
-
-      return isLoggedIn;
-    },
-  },
 });

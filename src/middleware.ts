@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import type { Role } from "@/generated/prisma/enums";
 import { hasMinRole } from "@/lib/rbac";
 
@@ -13,6 +13,8 @@ const ROUTE_ROLES: Record<string, Role> = {
   "/dashboard/geofence": "ADMIN",
   "/dashboard/settings": "ADMIN",
 };
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { nextUrl } = req;
