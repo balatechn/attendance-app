@@ -35,6 +35,11 @@ export default auth((req) => {
       return NextResponse.redirect(new URL("/login", nextUrl));
     }
 
+    // Force password change redirect
+    if (req.auth?.user?.mustChangePassword) {
+      return NextResponse.redirect(new URL("/change-password", nextUrl));
+    }
+
     // Check role-based access
     const userRole = req.auth?.user?.role as Role;
     for (const [route, requiredRole] of Object.entries(ROUTE_ROLES)) {

@@ -29,7 +29,14 @@ export default function LoginPage() {
       if (res?.error) {
         setError("Invalid email or password");
       } else {
-        router.push("/dashboard");
+        // Check session to see if password change is required
+        const sessionRes = await fetch("/api/auth/session");
+        const session = await sessionRes.json();
+        if (session?.user?.mustChangePassword) {
+          router.push("/change-password");
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
       }
     } catch {

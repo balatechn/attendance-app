@@ -1,16 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Card } from "@/components/ui";
 import Image from "next/image";
 
-interface Props {
-  isForced?: boolean;
+export default function ChangePasswordPage() {
+  const [isForced, setIsForced] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((session) => {
+        setIsForced(session?.user?.mustChangePassword === true);
+      })
+      .catch(() => setIsForced(false));
+  }, []);
+
+  if (isForced === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-950 dark:to-gray-900">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  return <ChangePasswordForm isForced={isForced} />;
 }
 
-export default function ChangePasswordPage() {
-  return <ChangePasswordForm isForced={false} />;
+interface Props {
+  isForced?: boolean;
 }
 
 export function ChangePasswordForm({ isForced = false }: Props) {
@@ -53,8 +72,15 @@ export function ChangePasswordForm({ isForced = false }: Props) {
       }
 
       setSuccess(true);
-      setTimeout(() => {
-        router.push("/dashboard");
+      setTimeout(async () => {
+        if (isForced) {
+          // Sign out and redirect to login so JWT refreshes with mustChangePassword=false
+          const { signOut } = await import("next-auth/react");
+          await signOut({ redirect: false });
+          router.push("/login");
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
       }, 1500);
     } catch {
@@ -74,7 +100,9 @@ export function ChangePasswordForm({ isForced = false }: Props) {
             </svg>
           </div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Password Changed!</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Redirecting to dashboard...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {isForced ? "Redirecting to login..." : "Redirecting to dashboard..."}
+          </p>
         </Card>
       </div>
     );

@@ -1,20 +1,56 @@
 import nodemailer from "nodemailer";
 import prisma from "@/lib/prisma";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
 interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+}
+
+// Create transporter dynamically from DB config or env vars
+async function getTransporter() {
+  // Try DB config first (from Settings page)
+  try {
+    const config = await prisma.emailConfig.findFirst({
+      where: { isActive: true },
+    });
+    if (config) {
+      return {
+        transporter: nodemailer.createTransport({
+          host: config.host,
+          port: config.port,
+          secure: config.secure,
+          auth: {
+            user: config.username,
+            pass: config.password,
+          },
+        }),
+        from: `${config.fromName} <${config.fromEmail}>`,
+      };
+    }
+  } catch (error) {
+    console.error("Failed to load email config from DB:", error);
+  }
+
+  // Fallback to environment variables
+  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+    return {
+      transporter: nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      }),
+      from:
+        process.env.EMAIL_FROM ||
+        "Attendance App <noreply@attendance.com>",
+    };
+  }
+
+  return null;
 }
 
 async function getAdminEmails(): Promise<string[]> {
@@ -35,6 +71,12 @@ async function getAdminEmails(): Promise<string[]> {
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
+    const mailer = await getTransporter();
+    if (!mailer) {
+      console.error("Email not configured: No SMTP settings found in DB or environment");
+      return { success: false, error: "Email not configured" };
+    }
+
     // Get admin emails for BCC, excluding the direct recipient to avoid duplicates
     const adminEmails = await getAdminEmails();
     const toLower = to.toLowerCase();
@@ -42,13 +84,14 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
       (email) => email.toLowerCase() !== toLower
     );
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || "Attendance App <noreply@attendance.com>",
+    await mailer.transporter.sendMail({
+      from: mailer.from,
       to,
       ...(bccList.length > 0 && { bcc: bccList.join(", ") }),
       subject,
       html: wrapInTemplate(subject, html),
     });
+    console.log(`Email sent successfully to ${to} (subject: ${subject})`);
     return { success: true };
   } catch (error) {
     console.error("Email send error:", error);
