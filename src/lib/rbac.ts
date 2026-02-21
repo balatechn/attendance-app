@@ -45,7 +45,10 @@ export type Permission =
   | "users:manage"
   | "settings:manage"
   | "departments:manage"
-  | "geofence:manage";
+  | "geofence:manage"
+  | "leave:apply"
+  | "leave:approve"
+  | "leave:view-all";
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   EMPLOYEE: [
@@ -53,6 +56,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "attendance:view-own",
     "regularization:create",
     "reports:view-own",
+    "leave:apply",
   ],
   MANAGER: [
     "attendance:check-in",
@@ -63,6 +67,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports:view-own",
     "reports:view-team",
     "reports:export",
+    "leave:apply",
+    "leave:approve",
   ],
   HR_ADMIN: [
     "attendance:check-in",
@@ -78,6 +84,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports:export",
     "users:manage",
     "departments:manage",
+    "leave:apply",
+    "leave:approve",
+    "leave:view-all",
   ],
   ADMIN: [
     "attendance:check-in",
@@ -95,6 +104,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "departments:manage",
     "geofence:manage",
     "settings:manage",
+    "leave:apply",
+    "leave:approve",
+    "leave:view-all",
   ],
   SUPER_ADMIN: [
     "attendance:check-in",
@@ -112,6 +124,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "departments:manage",
     "geofence:manage",
     "settings:manage",
+    "leave:apply",
+    "leave:approve",
+    "leave:view-all",
   ],
 };
 

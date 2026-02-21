@@ -23,6 +23,13 @@ enum RegularizationStatus {
   REJECTED
 }
 
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum SessionType {
   CHECK_IN
   CHECK_OUT
@@ -39,6 +46,7 @@ model User {
   departmentId       String?
   entityId           String?
   managerId          String?
+  locationId         String?
   avatarUrl          String?
   phone              String?
   employeeCode       String?  @unique
@@ -50,6 +58,7 @@ model User {
   department     Department?       @relation(fields: [departmentId], references: [id])
   entity         Entity?           @relation(fields: [entityId], references: [id])
   manager        User?             @relation("ManagerToEmployee", fields: [managerId], references: [id])
+  location       Location?         @relation(fields: [locationId], references: [id])
   subordinates   User[]            @relation("ManagerToEmployee")
   sessions       AttendanceSession[]
   dailySummaries DailySummary[]
@@ -57,11 +66,15 @@ model User {
   approvedRegularizations Regularization[] @relation("RegularizationApprover")
   notifications  Notification[]
   auditLogs      AuditLog[]
+  leaveBalances  LeaveBalance[]
+  leaveRequests  LeaveRequest[]    @relation("LeaveEmployee")
+  approvedLeaves LeaveRequest[]    @relation("LeaveApprover")
 
   @@index([email])
   @@index([departmentId])
   @@index([entityId])
   @@index([managerId])
+  @@index([locationId])
   @@index([role])
 }
 
@@ -212,4 +225,72 @@ model AuditLog {
   @@index([userId])
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+}
+
+model LeaveType {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  code            String   @unique
+  isFixed         Boolean  @default(true)
+  defaultDays     Float    @default(0)
+  accrualPerMonth Float?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  balances        LeaveBalance[]
+  requests        LeaveRequest[]
+}
+
+model LeaveBalance {
+  id           String   @id @default(cuid())
+  userId       String
+  leaveTypeId  String
+  year         Int
+  allocated    Float    @default(0)
+  used         Float    @default(0)
+  pending      Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveType    LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([userId, leaveTypeId, year])
+  @@index([userId, year])
+}
+
+model LeaveRequest {
+  id           String      @id @default(cuid())
+  userId       String
+  leaveTypeId  String
+  startDate    DateTime    @db.Date
+  endDate      DateTime    @db.Date
+  days         Float
+  reason       String
+  status       LeaveStatus @default(PENDING)
+  approverId   String?
+  reviewNote   String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user         User        @relation("LeaveEmployee", fields: [userId], references: [id], onDelete: Cascade)
+  leaveType    LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  approver     User?       @relation("LeaveApprover", fields: [approverId], references: [id])
+
+  @@index([userId, status])
+  @@index([approverId])
+  @@index([startDate, endDate])
 }

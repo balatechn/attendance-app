@@ -25,6 +25,16 @@ interface Entity {
   createdAt: string;
 }
 
+interface Location {
+  id: string;
+  name: string;
+  code: string;
+  address: string | null;
+  isActive: boolean;
+  userCount: number;
+  createdAt: string;
+}
+
 interface EmailConfigData {
   id: string;
   provider: string;
@@ -36,13 +46,25 @@ interface EmailConfigData {
   fromEmail: string;
 }
 
+interface LeaveTypeData {
+  id: string;
+  name: string;
+  code: string;
+  isFixed: boolean;
+  defaultDays: number;
+  accrualPerMonth: number | null;
+  isActive: boolean;
+}
+
 interface Props {
   departments: Department[];
   entities: Entity[];
+  locations: Location[];
+  leaveTypes: LeaveTypeData[];
   emailConfig: EmailConfigData | null;
 }
 
-type Tab = "departments" | "entities" | "email" | "general";
+type Tab = "departments" | "entities" | "locations" | "leave-types" | "email" | "general";
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -60,6 +82,25 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    key: "locations",
+    label: "Locations",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  {
+    key: "leave-types",
+    label: "Leave Types",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
     ),
   },
@@ -86,7 +127,7 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
 
 // ─── Main Component ───────────────────────────────────────
 
-export function SettingsClient({ departments, entities, emailConfig }: Props) {
+export function SettingsClient({ departments, entities, locations, leaveTypes, emailConfig }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("departments");
 
   return (
@@ -114,6 +155,8 @@ export function SettingsClient({ departments, entities, emailConfig }: Props) {
       {/* Tab Content */}
       {activeTab === "departments" && <DepartmentsTab departments={departments} />}
       {activeTab === "entities" && <EntitiesTab entities={entities} />}
+      {activeTab === "locations" && <LocationsTab locations={locations} />}
+      {activeTab === "leave-types" && <LeaveTypesTab leaveTypes={leaveTypes} />}
       {activeTab === "email" && <EmailConfigTab config={emailConfig} />}
       {activeTab === "general" && <GeneralTab />}
     </div>
@@ -499,6 +542,437 @@ function EntitiesTab({ entities: initialEntities }: { entities: Entity[] }) {
         </table>
         {entities.length === 0 && (
           <p className="text-center py-8 text-gray-400 text-sm">No entities yet. Click &quot;Add Entity&quot; to create one.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Locations Tab ────────────────────────────────────────
+
+function LocationsTab({ locations: initialLocations }: { locations: Location[] }) {
+  const router = useRouter();
+  const [locations, setLocations] = useState(initialLocations);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: "", code: "", address: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const method = editingId ? "PUT" : "POST";
+      const body = editingId ? { id: editingId, ...form } : form;
+
+      const res = await fetch("/api/locations", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error?.message || "Failed");
+        return;
+      }
+
+      setShowForm(false);
+      setEditingId(null);
+      setForm({ name: "", code: "", address: "" });
+      router.refresh();
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (location: Location) => {
+    const res = await fetch("/api/locations", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: location.id, isActive: !location.isActive }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setLocations((prev) =>
+        prev.map((l) => (l.id === location.id ? { ...l, isActive: !l.isActive } : l))
+      );
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this location?")) return;
+    const res = await fetch("/api/locations", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setLocations((prev) => prev.filter((l) => l.id !== id));
+    } else {
+      alert(data.error?.message || "Failed to delete");
+    }
+  };
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Locations</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{locations.length} locations</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditingId(null);
+            setForm({ name: "", code: "", address: "" });
+          }}
+        >
+          {showForm ? "Cancel" : "+ Add Location"}
+        </Button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Location Name"
+              placeholder="e.g., Mumbai Head Office"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Code"
+              placeholder="e.g., MUM-HO"
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+              required
+            />
+          </div>
+          <Input
+            label="Address"
+            placeholder="Enter location address"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+          />
+          {error && <p className="text-red-500 text-xs">{error}</p>}
+          <Button type="submit" loading={loading} size="sm">
+            {editingId ? "Update" : "Create"} Location
+          </Button>
+        </form>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 dark:border-gray-700">
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Code</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Address</th>
+              <th className="text-center py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Employees</th>
+              <th className="text-center py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {locations.map((location) => (
+              <tr key={location.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                <td className="py-3 px-3 font-medium text-gray-900 dark:text-white">{location.name}</td>
+                <td className="py-3 px-3 text-gray-500 dark:text-gray-400 font-mono text-xs">{location.code}</td>
+                <td className="py-3 px-3 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell">{location.address || "—"}</td>
+                <td className="py-3 px-3 text-center">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold">
+                    {location.userCount}
+                  </span>
+                </td>
+                <td className="py-3 px-3 text-center">
+                  <button
+                    onClick={() => handleToggleActive(location)}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-colors ${
+                      location.isActive
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    }`}
+                  >
+                    {location.isActive ? "Active" : "Inactive"}
+                  </button>
+                </td>
+                <td className="py-3 px-3">
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingId(location.id);
+                        setForm({ name: location.name, code: location.code, address: location.address || "" });
+                        setShowForm(true);
+                      }}
+                      className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Edit"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(location.id)}
+                      className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Delete"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {locations.length === 0 && (
+          <p className="text-center py-8 text-gray-400 text-sm">No locations yet. Click &quot;Add Location&quot; to create one.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Leave Types Tab ──────────────────────────────────────
+
+function LeaveTypesTab({ leaveTypes: initialTypes }: { leaveTypes: LeaveTypeData[] }) {
+  const router = useRouter();
+  const [leaveTypes, setLeaveTypes] = useState(initialTypes);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    name: "",
+    code: "",
+    isFixed: true,
+    defaultDays: 12,
+    accrualPerMonth: 0,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const method = editingId ? "PUT" : "POST";
+      const body = editingId
+        ? { id: editingId, ...form, accrualPerMonth: form.isFixed ? null : form.accrualPerMonth }
+        : { ...form, accrualPerMonth: form.isFixed ? null : form.accrualPerMonth };
+
+      const res = await fetch("/api/leaves/types", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error?.message || "Failed");
+        return;
+      }
+
+      setShowForm(false);
+      setEditingId(null);
+      setForm({ name: "", code: "", isFixed: true, defaultDays: 12, accrualPerMonth: 0 });
+      router.refresh();
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (lt: LeaveTypeData) => {
+    const res = await fetch("/api/leaves/types", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: lt.id, isActive: !lt.isActive }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setLeaveTypes((prev) =>
+        prev.map((t) => (t.id === lt.id ? { ...t, isActive: !t.isActive } : t))
+      );
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this leave type?")) return;
+    const res = await fetch("/api/leaves/types", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setLeaveTypes((prev) => prev.filter((t) => t.id !== id));
+    } else {
+      alert(data.error?.message || "Failed to delete");
+    }
+  };
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Leave Types</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{leaveTypes.length} leave types</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditingId(null);
+            setForm({ name: "", code: "", isFixed: true, defaultDays: 12, accrualPerMonth: 0 });
+          }}
+        >
+          {showForm ? "Cancel" : "+ Add Leave Type"}
+        </Button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Leave Type Name"
+              placeholder="e.g., Sick Leave"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Code"
+              placeholder="e.g., SL"
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Allocation Type</label>
+              <select
+                value={form.isFixed ? "fixed" : "accrual"}
+                onChange={(e) => setForm({ ...form, isFixed: e.target.value === "fixed" })}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+              >
+                <option value="fixed">Fixed (Annual)</option>
+                <option value="accrual">Accrual (Monthly)</option>
+              </select>
+            </div>
+            <Input
+              label="Default Days / Year"
+              type="number"
+              value={String(form.defaultDays)}
+              onChange={(e) => setForm({ ...form, defaultDays: Number(e.target.value) })}
+              required
+            />
+            {!form.isFixed && (
+              <Input
+                label="Accrual / Month"
+                type="number"
+                step="0.5"
+                value={String(form.accrualPerMonth)}
+                onChange={(e) => setForm({ ...form, accrualPerMonth: Number(e.target.value) })}
+              />
+            )}
+          </div>
+          {error && <p className="text-red-500 text-xs">{error}</p>}
+          <Button type="submit" loading={loading} size="sm">
+            {editingId ? "Update" : "Create"} Leave Type
+          </Button>
+        </form>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 dark:border-gray-700">
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Code</th>
+              <th className="text-center py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Type</th>
+              <th className="text-center py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Days/Year</th>
+              <th className="text-center py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leaveTypes.map((lt) => (
+              <tr key={lt.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                <td className="py-3 px-3 font-medium text-gray-900 dark:text-white">{lt.name}</td>
+                <td className="py-3 px-3 text-gray-500 dark:text-gray-400 font-mono text-xs">{lt.code}</td>
+                <td className="py-3 px-3 text-center">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                    lt.isFixed
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                      : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                  }`}>
+                    {lt.isFixed ? "Fixed" : `Accrual (${lt.accrualPerMonth}/mo)`}
+                  </span>
+                </td>
+                <td className="py-3 px-3 text-center font-medium text-gray-700 dark:text-gray-300">{lt.defaultDays}</td>
+                <td className="py-3 px-3 text-center">
+                  <button
+                    onClick={() => handleToggleActive(lt)}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-colors ${
+                      lt.isActive
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    }`}
+                  >
+                    {lt.isActive ? "Active" : "Inactive"}
+                  </button>
+                </td>
+                <td className="py-3 px-3">
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingId(lt.id);
+                        setForm({
+                          name: lt.name,
+                          code: lt.code,
+                          isFixed: lt.isFixed,
+                          defaultDays: lt.defaultDays,
+                          accrualPerMonth: lt.accrualPerMonth || 0,
+                        });
+                        setShowForm(true);
+                      }}
+                      className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Edit"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(lt.id)}
+                      className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Delete"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {leaveTypes.length === 0 && (
+          <p className="text-center py-8 text-gray-400 text-sm">No leave types yet. Click &quot;Add Leave Type&quot; to create one.</p>
         )}
       </div>
     </Card>

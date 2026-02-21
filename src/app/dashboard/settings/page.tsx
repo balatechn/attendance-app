@@ -15,7 +15,7 @@ export default async function SettingsPage() {
     redirect("/dashboard");
   }
 
-  const [departments, entities, emailConfig] = await Promise.all([
+  const [departments, entities, locations, leaveTypes, emailConfig] = await Promise.all([
     prisma.department.findMany({
       orderBy: { name: "asc" },
       include: { _count: { select: { users: true } } },
@@ -23,6 +23,13 @@ export default async function SettingsPage() {
     prisma.entity.findMany({
       orderBy: { name: "asc" },
       include: { _count: { select: { users: true } } },
+    }),
+    prisma.location.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { users: true } } },
+    }),
+    prisma.leaveType.findMany({
+      orderBy: { name: "asc" },
     }),
     prisma.emailConfig.findFirst({ where: { isActive: true } }),
   ]);
@@ -45,6 +52,24 @@ export default async function SettingsPage() {
         isActive: e.isActive,
         userCount: e._count.users,
         createdAt: e.createdAt.toISOString(),
+      }))}
+      locations={locations.map((l) => ({
+        id: l.id,
+        name: l.name,
+        code: l.code,
+        address: l.address,
+        isActive: l.isActive,
+        userCount: l._count.users,
+        createdAt: l.createdAt.toISOString(),
+      }))}
+      leaveTypes={leaveTypes.map((lt) => ({
+        id: lt.id,
+        name: lt.name,
+        code: lt.code,
+        isFixed: lt.isFixed,
+        defaultDays: lt.defaultDays,
+        accrualPerMonth: lt.accrualPerMonth,
+        isActive: lt.isActive,
       }))}
       emailConfig={emailConfig ? {
         id: emailConfig.id,

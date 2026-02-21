@@ -12,6 +12,8 @@ interface Employee {
   email: string;
   role: Role;
   department: { name: string } | null;
+  location: { name: string } | null;
+  reportingTo: string | null;
   isActive: boolean;
   isWorking: boolean;
   lastCheckIn: string | null;
@@ -26,6 +28,7 @@ interface Props {
   canManageUsers: boolean;
   departments: { id: string; name: string }[];
   entities: { id: string; name: string }[];
+  locations: { id: string; name: string }[];
   managers: { id: string; name: string }[];
 }
 
@@ -93,7 +96,7 @@ function LiveTimer({ checkInTime }: { checkInTime: string }) {
   );
 }
 
-export function EmployeesClient({ employees, canManageUsers, departments, entities, managers }: Props) {
+export function EmployeesClient({ employees, canManageUsers, departments, entities, locations, managers }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -261,7 +264,7 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                     {emp.email}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-1">
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${ROLE_COLORS[emp.role] || ROLE_COLORS.EMPLOYEE}`}>
                       {emp.role.replace(/_/g, " ")}
                     </span>
@@ -270,7 +273,20 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
                         {emp.department.name}
                       </span>
                     )}
+                    {emp.location && (
+                      <span className="text-[10px] text-blue-400 dark:text-blue-500 flex items-center gap-0.5">
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        </svg>
+                        {emp.location.name}
+                      </span>
+                    )}
                   </div>
+                  {emp.reportingTo && (
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                      Reports to: <span className="font-medium text-gray-500 dark:text-gray-400">{emp.reportingTo}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Live timer or status */}
@@ -337,6 +353,7 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
         <AddEmployeeModal
           departments={departments}
           entities={entities}
+          locations={locations}
           managers={managers}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => router.refresh()}

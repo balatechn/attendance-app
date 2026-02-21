@@ -19,9 +19,15 @@ interface Manager {
   name: string;
 }
 
+interface Location {
+  id: string;
+  name: string;
+}
+
 interface Props {
   departments: Department[];
   entities: Entity[];
+  locations: Location[];
   managers: Manager[];
   onClose: () => void;
   onSuccess: () => void;
@@ -34,7 +40,7 @@ const ROLES: { value: Role; label: string }[] = [
   { value: "ADMIN", label: "Admin" },
 ];
 
-export function AddEmployeeModal({ departments, entities, managers, onClose, onSuccess }: Props) {
+export function AddEmployeeModal({ departments, entities, locations, managers, onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tempPassword, setTempPassword] = useState("");
@@ -48,6 +54,7 @@ export function AddEmployeeModal({ departments, entities, managers, onClose, onS
     role: "EMPLOYEE" as Role,
     departmentId: "",
     entityId: "",
+    locationId: "",
     managerId: "",
   });
 
@@ -201,6 +208,22 @@ export function AddEmployeeModal({ departments, entities, managers, onClose, onS
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
+                <select
+                  value={form.locationId}
+                  onChange={(e) => setForm({ ...form, locationId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+                >
+                  <option value="">Select Location</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Manager</label>
                 <select

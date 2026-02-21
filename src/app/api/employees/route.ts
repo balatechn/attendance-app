@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, phone, role: employeeRole, departmentId, entityId, employeeCode, managerId } = body;
+    const { name, email, phone, role: employeeRole, departmentId, entityId, locationId, employeeCode, managerId } = body;
 
     if (!name || !email) {
       return apiError("Name and email are required", 400);
@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
         role: employeeRole || "EMPLOYEE",
         departmentId: departmentId || null,
         entityId: entityId || null,
+        locationId: locationId || null,
         employeeCode: employeeCode || null,
         managerId: managerId || null,
         mustChangePassword: true,
