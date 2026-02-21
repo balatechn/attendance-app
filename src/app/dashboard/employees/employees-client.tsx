@@ -4,13 +4,20 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Badge, Input, Button } from "@/components/ui";
 import { AddEmployeeModal } from "./add-employee-modal";
+import { EditEmployeeModal } from "./edit-employee-modal";
 import type { Role } from "@/generated/prisma/enums";
 
 interface Employee {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
+  employeeCode: string | null;
   role: Role;
+  departmentId: string | null;
+  entityId: string | null;
+  locationId: string | null;
+  managerId: string | null;
   department: { name: string } | null;
   location: { name: string } | null;
   reportingTo: string | null;
@@ -103,6 +110,31 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
   const [deptFilter, setDeptFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "working" | "not-working">("all");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [resetEmployee, setResetEmployee] = useState<Employee | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetResult, setResetResult] = useState<{ tempPassword: string; name: string } | null>(null);
+  const [actionMenuId, setActionMenuId] = useState<string | null>(null);
+
+  const handleResetPassword = async (emp: Employee) => {
+    setResetLoading(true);
+    try {
+      const res = await fetch(`/api/employees/${emp.id}/reset-password`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetResult({ tempPassword: data.data.tempPassword, name: emp.name });
+        setResetEmployee(null);
+      } else {
+        alert(data.error?.message || "Failed to reset password");
+      }
+    } catch {
+      alert("Something went wrong");
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const deptNames = useMemo(() => {
     const set = new Set<string>();
@@ -289,8 +321,54 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
                   )}
                 </div>
 
-                {/* Live timer or status */}
-                <div className="text-right flex-shrink-0">
+                {/* Action menu + Live timer */}
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  {canManageUsers && (
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionMenuId(actionMenuId === emp.id ? null : emp.id);
+                        }}
+                        className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </button>
+                      {actionMenuId === emp.id && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setActionMenuId(null)} />
+                          <div className="absolute right-0 top-8 z-20 w-40 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 overflow-hidden">
+                            <button
+                              onClick={() => {
+                                setEditEmployee(emp);
+                                setActionMenuId(null);
+                              }}
+                              className="w-full px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Edit Employee
+                            </button>
+                            <button
+                              onClick={() => {
+                                setResetEmployee(emp);
+                                setActionMenuId(null);
+                              }}
+                              className="w-full px-3 py-2 text-left text-xs text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 flex items-center gap-2"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                              </svg>
+                              Reset Password
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                   {emp.isWorking && emp.lastCheckIn ? (
                     <div>
                       <LiveTimer checkInTime={emp.lastCheckIn} />
@@ -358,6 +436,97 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
           onClose={() => setShowAddModal(false)}
           onSuccess={() => router.refresh()}
         />
+      )}
+
+      {/* Edit Employee Modal */}
+      {editEmployee && (
+        <EditEmployeeModal
+          employee={{
+            id: editEmployee.id,
+            name: editEmployee.name,
+            email: editEmployee.email,
+            phone: editEmployee.phone,
+            employeeCode: editEmployee.employeeCode,
+            role: editEmployee.role,
+            departmentId: editEmployee.departmentId,
+            entityId: editEmployee.entityId,
+            locationId: editEmployee.locationId,
+            managerId: editEmployee.managerId,
+            isActive: editEmployee.isActive,
+          }}
+          departments={departments}
+          entities={entities}
+          locations={locations}
+          managers={managers}
+          onClose={() => setEditEmployee(null)}
+          onSuccess={() => router.refresh()}
+        />
+      )}
+
+      {/* Reset Password Confirmation Modal */}
+      {resetEmployee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setResetEmployee(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
+            <Card>
+              <div className="text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                  <svg className="w-7 h-7 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Reset Password?</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  This will generate a new temporary password for <strong>{resetEmployee.name}</strong> and send it via email. They will need to change it on next login.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setResetEmployee(null)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleResetPassword(resetEmployee)}
+                    loading={resetLoading}
+                    className="flex-1 !bg-orange-600 hover:!bg-orange-700"
+                  >
+                    Reset Password
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Result Modal */}
+      {resetResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setResetResult(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
+            <Card>
+              <div className="text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <svg className="w-7 h-7 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Password Reset!</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  A new password has been sent to <strong>{resetResult.name}</strong>&apos;s email.
+                </p>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">New Temporary Password (backup)</p>
+                  <p className="text-lg font-mono font-bold text-amber-900 dark:text-amber-200 tracking-wider">
+                    {resetResult.tempPassword}
+                  </p>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-1">
+                    Save this in case the email didn&apos;t reach the employee
+                  </p>
+                </div>
+                <Button onClick={() => setResetResult(null)} className="w-full">
+                  Done
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
       )}
     </div>
   );

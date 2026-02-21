@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import prisma from "@/lib/prisma";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -16,11 +17,35 @@ interface EmailOptions {
   html: string;
 }
 
+async function getAdminEmails(): Promise<string[]> {
+  try {
+    const admins = await prisma.user.findMany({
+      where: {
+        role: { in: ["ADMIN", "SUPER_ADMIN"] },
+        isActive: true,
+      },
+      select: { email: true },
+    });
+    return admins.map((a) => a.email);
+  } catch (error) {
+    console.error("Failed to fetch admin emails for BCC:", error);
+    return [];
+  }
+}
+
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
+    // Get admin emails for BCC, excluding the direct recipient to avoid duplicates
+    const adminEmails = await getAdminEmails();
+    const toLower = to.toLowerCase();
+    const bccList = adminEmails.filter(
+      (email) => email.toLowerCase() !== toLower
+    );
+
     await transporter.sendMail({
       from: process.env.EMAIL_FROM || "Attendance App <noreply@attendance.com>",
       to,
+      ...(bccList.length > 0 && { bcc: bccList.join(", ") }),
       subject,
       html: wrapInTemplate(subject, html),
     });
