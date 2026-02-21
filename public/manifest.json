@@ -1,6 +1,6 @@
 {
-  "name": "AttendEase",
-  "short_name": "AttendEase",
+  "name": "National Group India AttendEase",
+  "short_name": "NGI AttendEase",
   "description": "Fast, mobile-first attendance management system",
   "start_url": "/dashboard",
   "display": "standalone",

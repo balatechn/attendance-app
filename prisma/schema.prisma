@@ -31,20 +31,24 @@ enum SessionType {
 // ─── Models ───────────────────────────────────────────────
 
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  name           String
-  password       String
-  role           Role     @default(EMPLOYEE)
-  departmentId   String?
-  managerId      String?
-  avatarUrl      String?
-  phone          String?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String
+  password           String
+  role               Role     @default(EMPLOYEE)
+  departmentId       String?
+  entityId           String?
+  managerId          String?
+  avatarUrl          String?
+  phone              String?
+  employeeCode       String?  @unique
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   department     Department?       @relation(fields: [departmentId], references: [id])
+  entity         Entity?           @relation(fields: [entityId], references: [id])
   manager        User?             @relation("ManagerToEmployee", fields: [managerId], references: [id])
   subordinates   User[]            @relation("ManagerToEmployee")
   sessions       AttendanceSession[]
@@ -56,6 +60,7 @@ model User {
 
   @@index([email])
   @@index([departmentId])
+  @@index([entityId])
   @@index([managerId])
   @@index([role])
 }
@@ -64,10 +69,38 @@ model Department {
   id        String   @id @default(cuid())
   name      String   @unique
   code      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   users     User[]
+}
+
+model Entity {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+}
+
+model EmailConfig {
+  id        String   @id @default(cuid())
+  provider  String   @default("custom") // gmail, microsoft365, custom
+  host      String
+  port      Int      @default(587)
+  secure    Boolean  @default(false)
+  username  String
+  password  String
+  fromName  String
+  fromEmail String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AttendanceSession {

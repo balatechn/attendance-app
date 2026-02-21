@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
 import { useUIStore } from "@/lib/store";
@@ -12,10 +13,12 @@ export function Header() {
     <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800">
       <div className="flex items-center justify-between h-14 px-4 sm:px-6">
         {/* Mobile logo */}
-        <div className="md:hidden">
-          <h1 className="text-lg font-bold text-blue-600 dark:text-blue-400">
-            AttendEase
-          </h1>
+        <div className="md:hidden flex items-center gap-2">
+          <Image src="/logo.webp" alt="Logo" width={32} height={32} className="rounded-lg" />
+          <div>
+            <p className="text-xs font-bold text-gray-900 dark:text-white leading-tight">National Group India</p>
+            <p className="text-[9px] font-medium text-blue-600 dark:text-blue-400">AttendEase</p>
+          </div>
         </div>
 
         {/* Desktop: page title area */}

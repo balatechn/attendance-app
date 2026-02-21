@@ -15,6 +15,7 @@ export const authConfig = {
         token.role = user.role;
         token.departmentId = user.departmentId;
         token.managerId = user.managerId;
+        token.mustChangePassword = user.mustChangePassword;
       }
       return token;
     },
@@ -23,11 +24,13 @@ export const authConfig = {
       session.user.role = token.role as Role;
       session.user.departmentId = token.departmentId as string | null;
       session.user.managerId = token.managerId as string | null;
+      session.user.mustChangePassword = token.mustChangePassword as boolean;
       return session;
     },
     async authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
       const isOnLogin = request.nextUrl.pathname.startsWith("/login");
+      const isOnChangePassword = request.nextUrl.pathname.startsWith("/change-password");
 
       if (isOnLogin) {
         if (isLoggedIn)
@@ -35,7 +38,14 @@ export const authConfig = {
         return true;
       }
 
-      return isLoggedIn;
+      if (!isLoggedIn) return false;
+
+      // Force password change redirect
+      if (auth?.user?.mustChangePassword && !isOnChangePassword) {
+        return Response.redirect(new URL("/change-password", request.nextUrl));
+      }
+
+      return true;
     },
   },
 } satisfies NextAuthConfig;

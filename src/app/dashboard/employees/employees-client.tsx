@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Card, Badge, Input } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { Card, Badge, Input, Button } from "@/components/ui";
+import { AddEmployeeModal } from "./add-employee-modal";
 import type { Role } from "@/generated/prisma/enums";
 
 interface Employee {
@@ -21,6 +23,10 @@ interface Employee {
 
 interface Props {
   employees: Employee[];
+  canManageUsers: boolean;
+  departments: { id: string; name: string }[];
+  entities: { id: string; name: string }[];
+  managers: { id: string; name: string }[];
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -87,13 +93,15 @@ function LiveTimer({ checkInTime }: { checkInTime: string }) {
   );
 }
 
-export function EmployeesClient({ employees }: Props) {
+export function EmployeesClient({ employees, canManageUsers, departments, entities, managers }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [deptFilter, setDeptFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "working" | "not-working">("all");
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const departments = useMemo(() => {
+  const deptNames = useMemo(() => {
     const set = new Set<string>();
     employees.forEach((e) => e.department?.name && set.add(e.department.name));
     return Array.from(set).sort();
@@ -127,14 +135,24 @@ export function EmployeesClient({ employees }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          Employees
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {totalActive} active employees &middot;{" "}
-          <span className="text-green-600 dark:text-green-400 font-medium">{workingCount} working now</span>
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Employees
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {totalActive} active employees &middot;{" "}
+            <span className="text-green-600 dark:text-green-400 font-medium">{workingCount} working now</span>
+          </p>
+        </div>
+        {canManageUsers && (
+          <Button onClick={() => setShowAddModal(true)} size="sm">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Add Employee
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -172,7 +190,7 @@ export function EmployeesClient({ employees }: Props) {
           className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
         >
           <option value="">All Departments</option>
-          {departments.map((d) => (
+          {deptNames.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </select>
@@ -312,6 +330,17 @@ export function EmployeesClient({ employees }: Props) {
           <p className="text-sm font-medium">No employees found</p>
           <p className="text-xs mt-1">Try adjusting your filters</p>
         </div>
+      )}
+
+      {/* Add Employee Modal */}
+      {showAddModal && (
+        <AddEmployeeModal
+          departments={departments}
+          entities={entities}
+          managers={managers}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => router.refresh()}
+        />
       )}
     </div>
   );

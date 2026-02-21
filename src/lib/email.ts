@@ -45,7 +45,7 @@ function wrapInTemplate(title: string, content: string): string {
       <tr>
         <td style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);padding:24px 32px;">
           <h1 style="color:#ffffff;margin:0;font-size:20px;">
-            ${process.env.NEXT_PUBLIC_APP_NAME || "AttendEase"}
+            ${process.env.NEXT_PUBLIC_APP_NAME || "National Group India AttendEase"}
           </h1>
         </td>
       </tr>
@@ -56,7 +56,7 @@ function wrapInTemplate(title: string, content: string): string {
       </tr>
       <tr>
         <td style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;text-align:center;">
-          This is an automated message from ${process.env.NEXT_PUBLIC_APP_NAME || "AttendEase"}.
+          This is an automated message from ${process.env.NEXT_PUBLIC_APP_NAME || "National Group India AttendEase"}.
           Please do not reply to this email.
         </td>
       </tr>

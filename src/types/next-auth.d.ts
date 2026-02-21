@@ -9,12 +9,14 @@ declare module "next-auth" {
       role: Role;
       departmentId: string | null;
       managerId: string | null;
+      mustChangePassword: boolean;
     };
   }
   interface User {
     role: Role;
     departmentId: string | null;
     managerId: string | null;
+    mustChangePassword: boolean;
   }
 }
 
@@ -24,5 +26,6 @@ declare module "@auth/core/jwt" {
     role: Role;
     departmentId: string | null;
     managerId: string | null;
+    mustChangePassword: boolean;
   }
 }

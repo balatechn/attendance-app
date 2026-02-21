@@ -1,4 +1,5 @@
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "AttendEase";
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "National Group India AttendEase";
+export const APP_SHORT_NAME = "NGI AttendEase";
 export const DEFAULT_GEOFENCE_RADIUS = Number(process.env.NEXT_PUBLIC_DEFAULT_GEOFENCE_RADIUS) || 200;
 export const STANDARD_WORK_HOURS = 8;
 export const LATE_THRESHOLD = "09:30"; // HH:mm 24-hour format

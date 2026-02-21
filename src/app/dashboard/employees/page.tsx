@@ -17,30 +17,45 @@ export default async function EmployeesPage() {
     redirect("/dashboard");
   }
 
+  const canManageUsers = hasPermission(role, "users:manage");
+
   const where = hasPermission(role, "attendance:view-all")
     ? {}
     : { managerId: session.user.id };
 
   const { start, end } = getDayRange(new Date());
 
-  const employees = await prisma.user.findMany({
-    where,
-    include: {
-      department: true,
-      sessions: {
-        where: { timestamp: { gte: start, lte: end } },
-        orderBy: { timestamp: "asc" },
+  const [employees, departments, entities, managers] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      include: {
+        department: true,
+        sessions: {
+          where: { timestamp: { gte: start, lte: end } },
+          orderBy: { timestamp: "asc" },
+        },
+        dailySummaries: {
+          where: { date: { gte: start, lte: end } },
+          take: 1,
+        },
       },
-      dailySummaries: {
-        where: { date: { gte: start, lte: end } },
-        take: 1,
-      },
-    },
-    orderBy: { name: "asc" },
-  });
+      orderBy: { name: "asc" },
+    }),
+    canManageUsers ? prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
+    canManageUsers ? prisma.entity.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
+    canManageUsers ? prisma.user.findMany({
+      where: { role: { in: ["MANAGER", "HR_ADMIN", "ADMIN", "SUPER_ADMIN"] }, isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }) : Promise.resolve([]),
+  ]);
 
   return (
     <EmployeesClient
+      canManageUsers={canManageUsers}
+      departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+      entities={entities.map((e) => ({ id: e.id, name: e.name }))}
+      managers={managers.map((m) => ({ id: m.id, name: m.name }))}
       employees={employees.map((e) => {
         const sessionCount = e.sessions.length;
         const isWorking = sessionCount > 0 && sessionCount % 2 !== 0;

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -113,10 +114,14 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen sticky top-0">
-      <div className="p-6">
-        <h1 className="text-xl font-bold text-blue-600 dark:text-blue-400">
-          AttendEase
-        </h1>
+      <div className="p-4">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <Image src="/logo.webp" alt="Logo" width={40} height={40} className="rounded-lg" />
+          <div>
+            <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">National Group India</p>
+            <p className="text-[10px] font-medium text-blue-600 dark:text-blue-400">AttendEase</p>
+          </div>
+        </Link>
       </div>
 
       <nav className="flex-1 px-3 space-y-1">
