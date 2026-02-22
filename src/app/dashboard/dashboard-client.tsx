@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { CheckInOutButton } from "@/components/attendance/check-in-button";
 import { DailySummaryWidget } from "@/components/attendance/daily-summary";
 import { SessionTimeline } from "@/components/attendance/session-timeline";
@@ -40,19 +41,38 @@ export function DashboardClient({
 }: Props) {
   const store = useAttendanceStore();
   const { pendingCount } = useOfflineSync();
+  const router = useRouter();
 
-  // Sync server state to client store on mount
+  // Sync server state to client store on mount AND on every server refresh
+  // Always overwrite store with authoritative server data to prevent stale timers
   useEffect(() => {
     if (isCheckedIn && lastCheckInTime) {
-      if (!store.isCheckedIn) {
-        store.checkIn(0, 0); // Will be overwritten by actual location
-        // Update session start time from server
-        useAttendanceStore.setState({ currentSessionStart: lastCheckInTime });
+      // Always force-set session start from server — prevents stale localStorage timer
+      useAttendanceStore.setState({
+        isCheckedIn: true,
+        currentSessionStart: lastCheckInTime,
+      });
+    } else if (!isCheckedIn) {
+      // Server says not checked in — force store to match
+      if (store.isCheckedIn) {
+        store.checkOut();
       }
-    } else if (!isCheckedIn && store.isCheckedIn) {
-      store.checkOut();
     }
   }, [isCheckedIn, lastCheckInTime]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-refresh dashboard data every 30 seconds to stay in sync across devices
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [router]);
+
+  // Callback for CheckInOutButton to trigger an immediate refresh
+  const onSessionChange = useCallback(() => {
+    // Small delay to let the server process the session
+    setTimeout(() => router.refresh(), 1000);
+  }, [router]);
 
   const now = new Date();
   const greeting =
@@ -88,7 +108,7 @@ export function DashboardClient({
 
       {/* Check In/Out section */}
       <Card className="flex flex-col items-center py-8">
-        <CheckInOutButton />
+        <CheckInOutButton onSessionChange={onSessionChange} />
       </Card>
 
       {/* Today's summary */}

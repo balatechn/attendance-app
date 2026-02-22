@@ -5,7 +5,7 @@ import { useGeolocation } from "@/hooks/use-geolocation";
 import { useAttendanceStore } from "@/lib/store";
 import { useLiveTimer } from "@/hooks/use-timer";
 
-export function CheckInOutButton() {
+export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => void }) {
   const { isCheckedIn, checkIn, checkOut, addToOfflineQueue } = useAttendanceStore();
   const { latitude, longitude, loading: geoLoading, error: geoError, refresh } = useGeolocation();
   const { formatted } = useLiveTimer();
@@ -62,6 +62,7 @@ export function CheckInOutButton() {
       } else {
         checkOut();
       }
+      onSessionChange?.();
     } catch {
       // Offline fallback
       addToOfflineQueue({
@@ -72,10 +73,11 @@ export function CheckInOutButton() {
       });
       if (type === "CHECK_IN") checkIn(latitude, longitude);
       else checkOut();
+      onSessionChange?.();
     } finally {
       setLoading(false);
     }
-  }, [latitude, longitude, isCheckedIn, refresh, checkIn, checkOut, addToOfflineQueue]);
+  }, [latitude, longitude, isCheckedIn, refresh, checkIn, checkOut, addToOfflineQueue, onSessionChange]);
 
   return (
     <div className="flex flex-col items-center gap-3">
