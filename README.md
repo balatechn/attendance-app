@@ -48,6 +48,8 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
 - **Password Reset** — Admin can reset passwords; temp password emailed to employee
 - **Geofencing** — Define office zones with lat/lng and radius on interactive maps
 - **Reports & Export** — Daily/monthly reports exportable to PDF and Excel
+- **Admin Reports** — 5-tab admin reporting: Attendance Summary, Daily View, Late Arrivals, Overtime, Leave Summary with Excel export
+- **Cross-Device Sync** — Auto-refresh dashboard every 30s, server-authoritative timer prevents stale data
 - **Email Notifications** — Automated emails for all workflows with admin BCC
 - **Role-Based Access** — 5-tier role hierarchy (Employee → Super Admin)
 - **Progressive Web App** — Install on mobile, works offline for check-ins
@@ -415,6 +417,7 @@ SUPER_ADMIN > ADMIN > HR_ADMIN > MANAGER > EMPLOYEE
 ### Attendance Tracking
 - **GPS-verified check-in/check-out** with geofence validation
 - **Live timer** showing current session duration
+- **Cross-device sync** — Dashboard auto-refreshes every 30 seconds; server-authoritative timer prevents stale localStorage data across devices
 - **Offline support** — queue check-ins when offline, auto-sync when back online
 - **Auto-checkout** at configurable time (default: 11 PM)
 - **Daily summary** — total work minutes, break time, overtime, late status
@@ -446,10 +449,17 @@ SUPER_ADMIN > ADMIN > HR_ADMIN > MANAGER > EMPLOYEE
 - **Multiple zones** — Support for multiple offices/locations
 
 ### Reports & Export
-- **Daily/Monthly views** — Filter by date range, department, employee
+- **Personal reports** — Daily/Monthly calendar view, filter by month
+- **Admin Reports (5 tabs):**
+  - **Attendance Summary** — Per-employee present/absent/late/half-day/leave counts with total work hours and overtime for any date range
+  - **Daily Attendance View** — All employees' status, check-in/out times, work hours for a single date
+  - **Late Arrivals** — Employees ranked by late frequency with expandable date details
+  - **Overtime Report** — Employees ranked by total OT hours with daily breakdown
+  - **Leave Summary** — Allocated/used/pending/balance per leave type per employee
+- **Filters** — Date range picker, department filter, quick presets (Today, 7 Days, 30 Days, This Month)
 - **PDF export** — Professional formatted attendance reports
-- **Excel export** — Detailed spreadsheets for payroll integration
-- **Team/individual views** — Based on role permissions
+- **Excel export** — All admin reports exportable to .xlsx for payroll integration
+- **RBAC protected** — Admin reports require `reports:view-all` permission (HR Admin+)
 
 ### Email Notifications
 - **DB-configurable SMTP** — Set up email via the Settings page (no env vars needed)
