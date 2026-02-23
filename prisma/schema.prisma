@@ -12,7 +12,6 @@ datasource db {
 enum Role {
   SUPER_ADMIN
   ADMIN
-  MANAGEMENT
   HR_ADMIN
   MANAGER
   EMPLOYEE

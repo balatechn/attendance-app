@@ -37,7 +37,6 @@ const ROLES: { value: Role; label: string }[] = [
   { value: "EMPLOYEE", label: "Employee" },
   { value: "MANAGER", label: "Manager" },
   { value: "HR_ADMIN", label: "HR Admin" },
-  { value: "MANAGEMENT", label: "Management" },
   { value: "ADMIN", label: "Admin" },
 ];
 
