@@ -25,6 +25,7 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
 - [Role-Based Access Control](#role-based-access-control)
 - [Features in Detail](#features-in-detail)
   - [Attendance Tracking](#attendance-tracking)
+  - [Management Dashboard](#management-dashboard)
   - [Leave Management](#leave-management)
   - [Regularization](#regularization)
   - [Employee Management](#employee-management)
@@ -42,6 +43,8 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
 
 - **GPS-based Check-in/Check-out** — Verify employee location against geofence zones
 - **Real-time Dashboard** — Live working status, timers, and daily statistics
+- **Management Dashboard** — Overview cards, attendance donut chart, entity-wise summary, weekly trend, and recent activity feed for managers and above
+- **Team Attendance Viewer** — Managers/admins can view any team member's attendance via dropdown on the Attendance page
 - **Leave Management** — Apply, approve/reject leaves with balance tracking
 - **Attendance Regularization** — Request corrections for missed check-ins/outs
 - **Employee Management** — Add, edit employees with temp password generation
@@ -207,8 +210,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 attendance-app/
 ├── prisma/
 │   ├── schema.prisma           # Database schema (16 models, 4 enums)
-│   ├── seed.ts                 # Demo data seeder
-│   └── migrations/             # Database migrations
+│   └── seed.ts                 # Demo data seeder
 ├── public/
 │   ├── logo.webp               # App logo
 │   ├── manifest.json           # PWA manifest
@@ -223,9 +225,11 @@ attendance-app/
 │   │   ├── dashboard/
 │   │   │   ├── layout.tsx      # Dashboard shell (sidebar, nav)
 │   │   │   ├── page.tsx        # Main dashboard
-│   │   │   ├── attendance/     # Check-in/out, daily log
+│   │   │   ├── attendance/     # Check-in/out, daily log, team viewer
+│   │   │   ├── management/     # Management dashboard (charts, stats)
 │   │   │   ├── leaves/         # Leave application & history
-│   │   │   ├── reports/        # Reports with PDF/Excel export
+│   │   │   ├── admin-reports/  # Admin reports (5-tab, Excel export)
+│   │   │   ├── reports/        # Personal reports with PDF/Excel export
 │   │   │   ├── profile/        # User profile
 │   │   │   ├── employees/      # Employee management (admin)
 │   │   │   ├── approvals/      # Leave & regularization approvals
@@ -242,6 +246,7 @@ attendance-app/
 │   │       ├── geofence/       # Geofence CRUD
 │   │       ├── regularization/ # Create + review
 │   │       ├── leaves/         # Apply, review, types
+│   │       ├── management/     # Management dashboard API
 │   │       ├── reports/        # Export API
 │   │       └── settings/       # Email config
 │   ├── components/
@@ -364,10 +369,16 @@ LeaveType ── LeaveRequest (one-to-many)
 | GET/POST | `/api/settings/email-config` | Get/save SMTP configuration |
 | PUT | `/api/settings/email-config` | Test SMTP connection |
 
+### Management
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/management` | Management dashboard data (overview, entity stats, trend, activity) |
+
 ### Reports
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/reports/export` | Export attendance data (PDF/Excel) |
+| GET | `/api/reports/admin` | Admin reports data (summary, daily, late, overtime, leave) |
 
 ---
 
@@ -393,7 +404,8 @@ SUPER_ADMIN > ADMIN > HR_ADMIN > MANAGER > EMPLOYEE
 | Approve regularization | ❌ | ✅ | ✅ | ✅ | ✅ |
 | View own reports | ✅ | ✅ | ✅ | ✅ | ✅ |
 | View team reports | ❌ | ✅ | ✅ | ✅ | ✅ |
-| View all reports | ❌ | ❌ | ✅ | ✅ | ✅ |
+| View all reports | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Management dashboard | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Export reports | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Manage employees | ❌ | ❌ | ✅ | ✅ | ✅ |
 | Manage departments | ❌ | ❌ | ✅ | ✅ | ✅ |
@@ -408,6 +420,7 @@ SUPER_ADMIN > ADMIN > HR_ADMIN > MANAGER > EMPLOYEE
 | `/dashboard/employees` | HR_ADMIN |
 | `/dashboard/geofence` | ADMIN |
 | `/dashboard/settings` | ADMIN |
+| `/dashboard/management` | MANAGER |
 | `/dashboard/approvals` | MANAGER |
 
 ---
@@ -417,11 +430,21 @@ SUPER_ADMIN > ADMIN > HR_ADMIN > MANAGER > EMPLOYEE
 ### Attendance Tracking
 - **GPS-verified check-in/check-out** with geofence validation
 - **Live timer** showing current session duration
+- **Team member viewer** — Managers see a dropdown to view any direct report's attendance; admins/HR see all employees
 - **Cross-device sync** — Dashboard auto-refreshes every 30 seconds; server-authoritative timer prevents stale localStorage data across devices
 - **Offline support** — queue check-ins when offline, auto-sync when back online
 - **Auto-checkout** at configurable time (default: 11 PM)
 - **Daily summary** — total work minutes, break time, overtime, late status
 - **Status tracking** — Present, Absent, Late, Half Day, On Leave
+
+### Management Dashboard
+- **Overview cards** — Total employees, present today, on leave, absent, late arrivals, average work hours
+- **Attendance donut chart** — Visual breakdown of present/absent/leave/late
+- **Entity-wise summary table** — Per-entity totals for present, absent, late, on leave
+- **Weekly trend chart** — 7-day bar chart of present vs absent
+- **Recent activity feed** — Latest check-in/check-out events across the organization
+- **Auto-refresh** — Data refreshes every 60 seconds
+- **RBAC protected** — Accessible to Manager role and above
 
 ### Leave Management
 - **Leave types** — Configurable categories (Annual, Sick, Casual, etc.)
@@ -508,7 +531,7 @@ After seeding the database (`npm run db:seed`), use these accounts:
 | `npm run lint` | Run ESLint |
 | `npm run db:generate` | Generate Prisma client |
 | `npm run db:push` | Push schema changes to database |
-| `npm run db:migrate` | Create and apply migration |
+| `npm run db:migrate` | Create and apply migration (if using migrations) |
 | `npm run db:seed` | Seed demo data |
 | `npm run db:studio` | Open Prisma Studio (visual DB browser) |
 | `npm run db:reset` | Reset database and re-apply migrations |
