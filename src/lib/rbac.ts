@@ -66,6 +66,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "regularization:approve",
     "reports:view-own",
     "reports:view-team",
+    "reports:view-all",
     "reports:export",
     "leave:apply",
     "leave:approve",
