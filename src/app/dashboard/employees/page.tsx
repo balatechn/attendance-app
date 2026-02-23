@@ -47,7 +47,7 @@ export default async function EmployeesPage() {
     canManageUsers ? prisma.entity.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.location.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.user.findMany({
-      where: { role: { in: ["MANAGER", "HR_ADMIN", "ADMIN", "SUPER_ADMIN"] }, isActive: true },
+      where: { role: { in: ["MANAGER", "HR_ADMIN", "MANAGEMENT", "ADMIN", "SUPER_ADMIN"] }, isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }) : Promise.resolve([]),

@@ -17,6 +17,7 @@ export const ADMIN_NAV_ITEMS = [
   { label: "Employees", href: "/dashboard/employees", icon: "Users" },
   { label: "Approvals", href: "/dashboard/approvals", icon: "CheckCircle" },
   { label: "Admin Reports", href: "/dashboard/admin-reports", icon: "FileText" },
+  { label: "Management", href: "/dashboard/management", icon: "BarChart" },
   { label: "Geofence", href: "/dashboard/geofence", icon: "MapPin" },
   { label: "Settings", href: "/dashboard/settings", icon: "Settings" },
 ] as const;

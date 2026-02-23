@@ -5,6 +5,7 @@ const ROLE_HIERARCHY: Role[] = [
   "EMPLOYEE",
   "MANAGER",
   "HR_ADMIN",
+  "MANAGEMENT",
   "ADMIN",
   "SUPER_ADMIN",
 ];
@@ -27,6 +28,10 @@ export function isHROrAbove(role: Role): boolean {
 
 export function isManagerOrAbove(role: Role): boolean {
   return hasMinRole(role, "MANAGER");
+}
+
+export function isManagementOrAbove(role: Role): boolean {
+  return hasMinRole(role, "MANAGEMENT");
 }
 
 // Permission definitions
@@ -85,6 +90,22 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports:export",
     "users:manage",
     "departments:manage",
+    "leave:apply",
+    "leave:approve",
+    "leave:view-all",
+  ],
+  MANAGEMENT: [
+    "attendance:check-in",
+    "attendance:view-own",
+    "attendance:view-team",
+    "attendance:view-all",
+    "regularization:create",
+    "regularization:approve",
+    "regularization:view-all",
+    "reports:view-own",
+    "reports:view-team",
+    "reports:view-all",
+    "reports:export",
     "leave:apply",
     "leave:approve",
     "leave:view-all",
