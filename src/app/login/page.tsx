@@ -51,7 +51,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Image src="/logo.webp" alt="National Group India" width={200} height={89} className="mx-auto mb-4" />
+          <div className="w-48 h-20 relative mx-auto mb-4">
+            <Image src="/logo.webp" alt="National Group India" fill className="object-contain" />
+          </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
             National Group India
           </h1>

@@ -126,7 +126,9 @@ export function Sidebar() {
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen sticky top-0">
       <div className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <Image src="/logo.webp" alt="Logo" width={44} height={20} className="rounded" />
+          <div className="w-10 h-10 relative flex-shrink-0">
+            <Image src="/logo.webp" alt="Logo" fill className="object-contain" />
+          </div>
           <div>
             <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">National Group India</p>
             <p className="text-[10px] font-medium text-blue-600 dark:text-blue-400">AttendEase</p>

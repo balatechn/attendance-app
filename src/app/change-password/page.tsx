@@ -112,7 +112,9 @@ export function ChangePasswordForm({ isForced = false }: Props) {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-950 dark:to-gray-900">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
-          <Image src="/logo.webp" alt="Logo" width={56} height={56} className="mx-auto rounded-xl shadow mb-3" />
+          <div className="w-36 h-16 relative mx-auto mb-3">
+            <Image src="/logo.webp" alt="Logo" fill className="object-contain" />
+          </div>
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">
             {isForced ? "Set Your New Password" : "Change Password"}
           </h1>
