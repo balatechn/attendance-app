@@ -14,7 +14,7 @@ export function Header() {
       <div className="flex items-center justify-between h-14 px-4 sm:px-6">
         {/* Mobile logo */}
         <div className="md:hidden flex items-center gap-2">
-          <Image src="/logo.webp" alt="Logo" width={32} height={32} className="rounded-lg" />
+          <Image src="/logo.webp" alt="Logo" width={38} height={17} className="rounded" />
           <div>
             <p className="text-xs font-bold text-gray-900 dark:text-white leading-tight">National Group India</p>
             <p className="text-[9px] font-medium text-blue-600 dark:text-blue-400">AttendEase</p>
