@@ -83,8 +83,8 @@ export async function GET() {
         })
       ),
 
-      // Department-wise stats for today
-      prisma.department.findMany({
+      // Entity-wise stats for today
+      prisma.entity.findMany({
         where: { isActive: true },
         select: {
           id: true,
@@ -110,14 +110,14 @@ export async function GET() {
     const lateCount = todaySummaries.filter((s) => s.status === "LATE").length;
     const absentCount = totalEmployees - presentCount - todayLeaves;
 
-    // Process department stats
-    const departments = departmentStats.map((dept) => {
-      const total = dept.users.length;
-      const present = dept.users.filter((u) => u.dailySummaries.length > 0 && ["PRESENT", "LATE", "HALF_DAY"].includes(u.dailySummaries[0].status)).length;
-      const late = dept.users.filter((u) => u.dailySummaries.length > 0 && u.dailySummaries[0].status === "LATE").length;
-      const onLeave = dept.users.filter((u) => u.dailySummaries.length > 0 && u.dailySummaries[0].status === "ON_LEAVE").length;
+    // Process entity stats
+    const entities = departmentStats.map((entity) => {
+      const total = entity.users.length;
+      const present = entity.users.filter((u) => u.dailySummaries.length > 0 && ["PRESENT", "LATE", "HALF_DAY"].includes(u.dailySummaries[0].status)).length;
+      const late = entity.users.filter((u) => u.dailySummaries.length > 0 && u.dailySummaries[0].status === "LATE").length;
+      const onLeave = entity.users.filter((u) => u.dailySummaries.length > 0 && u.dailySummaries[0].status === "ON_LEAVE").length;
       const absent = total - present - onLeave;
-      return { id: dept.id, name: dept.name, total, present, absent, late, onLeave };
+      return { id: entity.id, name: entity.name, total, present, absent, late, onLeave };
     });
 
     // Format recent activity
@@ -138,7 +138,7 @@ export async function GET() {
         lateArrivals: lateCount,
         pendingApprovals: pendingRegularizations + pendingLeaves,
       },
-      departments,
+      entities,
       recentActivity,
       weeklyTrend: weeklyData,
     });

@@ -14,7 +14,7 @@ interface OverviewData {
   pendingApprovals: number;
 }
 
-interface DepartmentStat {
+interface EntityStat {
   id: string;
   name: string;
   total: number;
@@ -40,7 +40,7 @@ interface WeeklyTrend {
 
 interface DashboardData {
   overview: OverviewData;
-  departments: DepartmentStat[];
+  entities: EntityStat[];
   recentActivity: RecentActivity[];
   weeklyTrend: WeeklyTrend[];
 }
@@ -192,18 +192,18 @@ function WeeklyTrendChart({ data, maxEmployees }: { data: WeeklyTrend[]; maxEmpl
 }
 
 // ─── Department Table ─────────────────────────────────────
-function DepartmentTable({ departments }: { departments: DepartmentStat[] }) {
+function EntityTable({ entities }: { entities: EntityStat[] }) {
   return (
     <Card>
       <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
-        Department-wise Summary
+        Entity-wise Summary
       </h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
               <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400">
-                Department
+                Entity
               </th>
               <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400">
                 Total
@@ -223,43 +223,43 @@ function DepartmentTable({ departments }: { departments: DepartmentStat[] }) {
             </tr>
           </thead>
           <tbody>
-            {departments.map((dept) => (
+            {entities.map((entity) => (
               <tr
-                key={dept.id}
+                key={entity.id}
                 className="border-b border-gray-100 dark:border-gray-800 last:border-0"
               >
                 <td className="py-2.5 px-3 font-medium text-gray-900 dark:text-white">
-                  {dept.name}
+                  {entity.name}
                 </td>
                 <td className="py-2.5 px-3 text-center text-gray-600 dark:text-gray-400">
-                  {dept.total}
+                  {entity.total}
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className="text-green-600 dark:text-green-400 font-medium">
-                    {dept.present}
+                    {entity.present}
                   </span>
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className="text-red-600 dark:text-red-400 font-medium">
-                    {dept.absent}
+                    {entity.absent}
                   </span>
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className="text-yellow-600 dark:text-yellow-400 font-medium">
-                    {dept.late}
+                    {entity.late}
                   </span>
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className="text-purple-600 dark:text-purple-400 font-medium">
-                    {dept.onLeave}
+                    {entity.onLeave}
                   </span>
                 </td>
               </tr>
             ))}
-            {departments.length === 0 && (
+            {entities.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-gray-400">
-                  No departments found
+                  No entities found
                 </td>
               </tr>
             )}
@@ -396,7 +396,7 @@ export function ManagementDashboardClient() {
     );
   }
 
-  const { overview, departments, recentActivity, weeklyTrend } = data;
+  const { overview, entities, recentActivity, weeklyTrend } = data;
   const presentPct = overview.totalEmployees
     ? Math.round((overview.presentToday / overview.totalEmployees) * 100)
     : 0;
@@ -474,8 +474,8 @@ export function ManagementDashboardClient() {
         <WeeklyTrendChart data={weeklyTrend} maxEmployees={overview.totalEmployees} />
       </div>
 
-      {/* Department Table */}
-      <DepartmentTable departments={departments} />
+      {/* Entity Table */}
+      <EntityTable entities={entities} />
 
       {/* Recent Activity */}
       <RecentActivityFeed activities={recentActivity} />
