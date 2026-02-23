@@ -49,7 +49,7 @@ interface Props {
 }
 
 const BALANCE_COLORS = [
-  "from-blue-500 to-cyan-400",
+  "from-amber-500 to-yellow-400",
   "from-green-500 to-emerald-400",
   "from-purple-500 to-pink-400",
   "from-orange-500 to-amber-400",

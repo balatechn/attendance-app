@@ -9,6 +9,20 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
+
+  /* National Group India — gold/bronze brand palette */
+  /* Overrides Tailwind's default blue with brand colors */
+  --color-blue-50: #faf7f0;
+  --color-blue-100: #f3ead5;
+  --color-blue-200: #e8d5b0;
+  --color-blue-300: #e2bf79;
+  --color-blue-400: #d4a85c;
+  --color-blue-500: #b08845;
+  --color-blue-600: #916f44;
+  --color-blue-700: #7a5d38;
+  --color-blue-800: #63492d;
+  --color-blue-900: #4a3621;
+  --color-blue-950: #362311;
 }
 
 @media (prefers-color-scheme: dark) {
