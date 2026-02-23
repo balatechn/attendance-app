@@ -51,7 +51,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-48 h-20 relative mx-auto mb-4">
+          <div className="w-36 h-14 relative mx-auto mb-4">
             <Image src="/logo.webp" alt="National Group India" fill className="object-contain" />
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -97,30 +97,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-            <p className="text-xs text-gray-400 dark:text-gray-500 text-center mb-2">
-              Demo Credentials
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: "Admin", email: "admin@demo.com" },
-                { label: "Employee", email: "john@demo.com" },
-              ].map((demo) => (
-                <button
-                  key={demo.email}
-                  type="button"
-                  onClick={() => {
-                    setEmail(demo.email);
-                    setPassword("password123");
-                  }}
-                  className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  {demo.label}
-                </button>
-              ))}
-            </div>
-          </div>
+
         </Card>
       </div>
     </div>
