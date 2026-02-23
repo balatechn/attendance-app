@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { SessionTimeline } from "@/components/attendance/session-timeline";
 import { Card, Badge, Button, Input } from "@/components/ui";
 import { formatDate, formatTime, minutesToHoursMinutes } from "@/lib/datetime";
@@ -21,9 +22,19 @@ interface Props {
     firstCheckIn: string | null;
     lastCheckOut: string | null;
   }>;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    department: { name: string } | null;
+  }>;
+  selectedEmployeeId: string | null;
+  selectedEmployeeName: string | null;
+  canViewTeam: boolean;
 }
 
-export function AttendancePageClient({ sessions, recentDays }: Props) {
+export function AttendancePageClient({ sessions, recentDays, teamMembers, selectedEmployeeId, selectedEmployeeName, canViewTeam }: Props) {
+  const router = useRouter();
   const [showRegForm, setShowRegForm] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
   const [regSuccess, setRegSuccess] = useState("");
@@ -66,26 +77,58 @@ export function AttendancePageClient({ sessions, recentDays }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-          Attendance
-        </h2>
-        <Button
-          size="sm"
-          variant={showRegForm ? "outline" : "primary"}
-          onClick={() => { setShowRegForm(!showRegForm); setRegError(""); setRegSuccess(""); }}
-        >
-          {showRegForm ? (
-            "Cancel"
-          ) : (
-            <>
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Regularization
-            </>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Attendance
+          </h2>
+          {selectedEmployeeName && (
+            <Badge variant="info" className="text-xs">
+              Viewing: {selectedEmployeeName}
+            </Badge>
           )}
-        </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          {canViewTeam && (
+            <select
+              className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 max-w-[200px]"
+              value={selectedEmployeeId || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val) {
+                  router.push(`/dashboard/attendance?employee=${val}`);
+                } else {
+                  router.push("/dashboard/attendance");
+                }
+              }}
+            >
+              <option value="">My Attendance</option>
+              {teamMembers.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}{m.department ? ` (${m.department.name})` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+          {!selectedEmployeeId && (
+            <Button
+              size="sm"
+              variant={showRegForm ? "outline" : "primary"}
+              onClick={() => { setShowRegForm(!showRegForm); setRegError(""); setRegSuccess(""); }}
+            >
+              {showRegForm ? (
+                "Cancel"
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Regularization
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Regularization Form */}
