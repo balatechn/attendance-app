@@ -7,7 +7,7 @@ import { sendEmail } from "@/lib/email";
 // POST: Register a new user after email verification
 export async function POST(request: NextRequest) {
   try {
-    const { email, name, password, code, phone } = await request.json();
+    const { email, name, password, code, phone, locationId } = await request.json();
 
     // Validate required fields
     if (!email || !name || !password || !code) {
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         password: hashedPassword,
         phone: phone?.trim() || null,
+        locationId: locationId || null,
         role: "EMPLOYEE",
         isActive: true,
         mustChangePassword: false,

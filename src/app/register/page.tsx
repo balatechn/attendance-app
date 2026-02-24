@@ -4,9 +4,14 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Input, Card } from "@/components/ui";
+import { Button, Input, Card, Select } from "@/components/ui";
 
 type Step = "email" | "verify" | "details";
+
+interface LocationOption {
+  id: string;
+  name: string;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,6 +22,8 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [locationId, setLocationId] = useState("");
+  const [locations, setLocations] = useState<LocationOption[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,6 +36,16 @@ export default function RegisterPage() {
     const t = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
     return () => clearTimeout(t);
   }, [resendTimer]);
+
+  // Fetch locations on mount
+  useEffect(() => {
+    fetch("/api/auth/locations")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.data) setLocations(d.data);
+      })
+      .catch(() => {});
+  }, []);
 
   // ─── Step 1: Send verification code ───────────────
   const handleSendCode = async (e: React.FormEvent) => {
@@ -140,6 +157,7 @@ export default function RegisterPage() {
           name: name.trim(),
           password,
           phone: phone.trim(),
+          locationId: locationId || undefined,
           code: code.join(""),
         }),
       });
@@ -384,6 +402,17 @@ export default function RegisterPage() {
                     onChange={(e) => setPhone(e.target.value)}
                     autoComplete="tel"
                   />
+                  {locations.length > 0 && (
+                    <Select
+                      label="Location"
+                      value={locationId}
+                      onChange={(e) => setLocationId(e.target.value)}
+                      options={[
+                        { value: "", label: "Select your location" },
+                        ...locations.map((l) => ({ value: l.id, label: l.name })),
+                      ]}
+                    />
+                  )}
                   <Input
                     label="Password"
                     type="password"
