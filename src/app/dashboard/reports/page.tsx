@@ -1,7 +1,8 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { startOfMonth, endOfMonth } from "date-fns";
+import { formatIST } from "@/lib/datetime";
 import { ReportsClient } from "./reports-client";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export default async function ReportsPage() {
   });
 
   const calendarData = summaries.map((s) => ({
-    date: format(s.date, "yyyy-MM-dd"),
+    date: formatIST(s.date, "yyyy-MM-dd"),
     status: s.status,
     totalWorkMins: s.totalWorkMins,
   }));

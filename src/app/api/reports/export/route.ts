@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { apiResponse, apiError } from "@/lib/api-utils";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { startOfMonth, endOfMonth } from "date-fns";
+import { formatIST } from "@/lib/datetime";
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,10 +35,10 @@ export async function GET(request: NextRequest) {
       // Dynamic import for xlsx to reduce bundle size
       const XLSX = await import("xlsx");
       const data = summaries.map((s) => ({
-        Date: format(s.date, "yyyy-MM-dd"),
+        Date: formatIST(s.date, "yyyy-MM-dd"),
         Status: s.status,
-        "First Check-in": s.firstCheckIn ? format(s.firstCheckIn, "HH:mm") : "-",
-        "Last Check-out": s.lastCheckOut ? format(s.lastCheckOut, "HH:mm") : "-",
+        "First Check-in": s.firstCheckIn ? formatIST(s.firstCheckIn, "HH:mm") : "-",
+        "Last Check-out": s.lastCheckOut ? formatIST(s.lastCheckOut, "HH:mm") : "-",
         "Work Hours": (s.totalWorkMins / 60).toFixed(1),
         "Break Hours": (s.totalBreakMins / 60).toFixed(1),
         "Overtime Hours": (s.overtimeMins / 60).toFixed(1),
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
       return new Response(buffer, {
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="attendance-${format(monthDate, "yyyy-MM")}.xlsx"`,
+          "Content-Disposition": `attachment; filename="attendance-${formatIST(monthDate, "yyyy-MM")}.xlsx"`,
         },
       });
     }
@@ -66,16 +67,16 @@ export async function GET(request: NextRequest) {
     doc.setFontSize(18);
     doc.text("Attendance Report", 14, 22);
     doc.setFontSize(11);
-    doc.text(`${user?.name || ""} - ${format(monthDate, "MMMM yyyy")}`, 14, 32);
+    doc.text(`${user?.name || ""} - ${formatIST(monthDate, "MMMM yyyy")}`, 14, 32);
 
     autoTable(doc, {
       startY: 40,
       head: [["Date", "Status", "In", "Out", "Work (h)", "Break (h)", "OT (h)"]],
       body: summaries.map((s) => [
-        format(s.date, "dd MMM"),
+        formatIST(s.date, "dd MMM"),
         s.status,
-        s.firstCheckIn ? format(s.firstCheckIn, "HH:mm") : "-",
-        s.lastCheckOut ? format(s.lastCheckOut, "HH:mm") : "-",
+        s.firstCheckIn ? formatIST(s.firstCheckIn, "HH:mm") : "-",
+        s.lastCheckOut ? formatIST(s.lastCheckOut, "HH:mm") : "-",
         (s.totalWorkMins / 60).toFixed(1),
         (s.totalBreakMins / 60).toFixed(1),
         (s.overtimeMins / 60).toFixed(1),
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
     return new Response(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="attendance-${format(monthDate, "yyyy-MM")}.pdf"`,
+        "Content-Disposition": `attachment; filename="attendance-${formatIST(monthDate, "yyyy-MM")}.pdf"`,
       },
     });
   } catch (error) {

@@ -3,7 +3,8 @@ import prisma from "@/lib/prisma";
 import { apiResponse, apiError } from "@/lib/api-utils";
 import { isManagerOrAbove } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
-import { startOfDay, endOfDay, subDays, format } from "date-fns";
+import { startOfDay, endOfDay, subDays } from "date-fns";
+import { formatIST } from "@/lib/datetime";
 
 export async function GET() {
   try {
@@ -76,8 +77,8 @@ export async function GET() {
           return prisma.dailySummary
             .count({ where: { date: { gte: dayStart, lte: dayEnd } } })
             .then((count) => ({
-              date: format(date, "EEE"),
-              fullDate: format(date, "MMM dd"),
+              date: formatIST(date, "EEE"),
+              fullDate: formatIST(date, "MMM dd"),
               present: count,
             }));
         })
@@ -126,7 +127,7 @@ export async function GET() {
       type: s.type,
       employeeName: s.user.name,
       department: s.user.department?.name || "—",
-      time: format(new Date(s.timestamp), "hh:mm a"),
+      time: formatIST(new Date(s.timestamp), "hh:mm a"),
     }));
 
     return apiResponse({

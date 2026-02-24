@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { apiResponse, apiError } from "@/lib/api-utils";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
-import { format } from "date-fns";
+import { formatIST } from "@/lib/datetime";
 
 export async function GET(request: NextRequest) {
   try {
@@ -124,7 +124,7 @@ async function attendanceSummaryReport(
         "Overtime Hours": d.totalOTHours,
       })),
       "Attendance Summary",
-      `attendance-summary-${format(start, "yyyy-MM-dd")}-to-${format(end, "yyyy-MM-dd")}`
+      `attendance-summary-${formatIST(start, "yyyy-MM-dd")}-to-${formatIST(end, "yyyy-MM-dd")}`
     );
   }
 
@@ -167,10 +167,10 @@ async function dailyAttendanceReport(
       department: u.department?.name || "-",
       status: summary?.status || "ABSENT",
       firstCheckIn: summary?.firstCheckIn
-        ? format(summary.firstCheckIn, "HH:mm")
+        ? formatIST(summary.firstCheckIn, "HH:mm")
         : "-",
       lastCheckOut: summary?.lastCheckOut
-        ? format(summary.lastCheckOut, "HH:mm")
+        ? formatIST(summary.lastCheckOut, "HH:mm")
         : "-",
       workHours: summary ? +(summary.totalWorkMins / 60).toFixed(1) : 0,
       breakHours: summary ? +(summary.totalBreakMins / 60).toFixed(1) : 0,
@@ -193,7 +193,7 @@ async function dailyAttendanceReport(
         Sessions: d.sessions,
       })),
       "Daily Attendance",
-      `daily-attendance-${format(date, "yyyy-MM-dd")}`
+      `daily-attendance-${formatIST(date, "yyyy-MM-dd")}`
     );
   }
 
@@ -249,8 +249,8 @@ async function lateArrivalsReport(
     if (u.dailySummaries.length === 0) continue;
 
     const dates = u.dailySummaries.map((s) => ({
-      date: format(s.date, "yyyy-MM-dd"),
-      checkIn: s.firstCheckIn ? format(s.firstCheckIn, "HH:mm") : "-",
+      date: formatIST(s.date, "yyyy-MM-dd"),
+      checkIn: s.firstCheckIn ? formatIST(s.firstCheckIn, "HH:mm") : "-",
     }));
 
     summaryData.push({
@@ -268,8 +268,8 @@ async function lateArrivalsReport(
         name: u.name,
         employeeCode: u.employeeCode || "-",
         department: u.department?.name || "-",
-        date: format(s.date, "yyyy-MM-dd"),
-        checkIn: s.firstCheckIn ? format(s.firstCheckIn, "HH:mm") : "-",
+        date: formatIST(s.date, "yyyy-MM-dd"),
+        checkIn: s.firstCheckIn ? formatIST(s.firstCheckIn, "HH:mm") : "-",
       });
     }
   }
@@ -284,7 +284,7 @@ async function lateArrivalsReport(
         "Check-In Time": d.checkIn,
       })),
       "Late Arrivals",
-      `late-arrivals-${format(start, "yyyy-MM-dd")}-to-${format(end, "yyyy-MM-dd")}`
+      `late-arrivals-${formatIST(start, "yyyy-MM-dd")}-to-${formatIST(end, "yyyy-MM-dd")}`
     );
   }
 
@@ -334,7 +334,7 @@ async function overtimeReport(
         totalOTHours: +(totalOTMins / 60).toFixed(1),
         avgOTPerDay: +(totalOTMins / 60 / u.dailySummaries.length).toFixed(1),
         dates: u.dailySummaries.map((s) => ({
-          date: format(s.date, "yyyy-MM-dd"),
+          date: formatIST(s.date, "yyyy-MM-dd"),
           otHours: +(s.overtimeMins / 60).toFixed(1),
         })),
       };
@@ -358,7 +358,7 @@ async function overtimeReport(
     return await exportToExcel(
       rows,
       "Overtime Report",
-      `overtime-${format(start, "yyyy-MM-dd")}-to-${format(end, "yyyy-MM-dd")}`
+      `overtime-${formatIST(start, "yyyy-MM-dd")}-to-${formatIST(end, "yyyy-MM-dd")}`
     );
   }
 

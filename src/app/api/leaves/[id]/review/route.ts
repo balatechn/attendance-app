@@ -5,7 +5,7 @@ import { apiResponse, apiError } from "@/lib/api-utils";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 import { sendEmail } from "@/lib/email";
-import { format } from "date-fns";
+import { formatIST } from "@/lib/datetime";
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -93,7 +93,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data: {
         userId: leaveRequest.userId,
         title: `Leave ${status === "APPROVED" ? "Approved" : "Rejected"}`,
-        message: `Your ${leaveRequest.leaveType.name} request (${format(leaveRequest.startDate, "MMM dd")} - ${format(leaveRequest.endDate, "MMM dd")}) has been ${status.toLowerCase()}.`,
+        message: `Your ${leaveRequest.leaveType.name} request (${formatIST(leaveRequest.startDate, "MMM dd")} - ${formatIST(leaveRequest.endDate, "MMM dd")}) has been ${status.toLowerCase()}.`,
         link: "/dashboard/leaves",
       },
     });
@@ -108,8 +108,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           <h2 style="color:#1e293b;margin:0 0 16px;">Leave ${status === "APPROVED" ? "Approved" : "Rejected"}</h2>
           <p style="color:#475569;line-height:1.6;">
             Your <strong>${leaveRequest.leaveType.name}</strong> request for
-            <strong>${format(leaveRequest.startDate, "MMM dd, yyyy")}</strong> to
-            <strong>${format(leaveRequest.endDate, "MMM dd, yyyy")}</strong>
+            <strong>${formatIST(leaveRequest.startDate, "MMM dd, yyyy")}</strong> to
+            <strong>${formatIST(leaveRequest.endDate, "MMM dd, yyyy")}</strong>
             (${leaveRequest.days} day${leaveRequest.days > 1 ? "s" : ""}) has been
             <span style="color:${color};font-weight:600;">${status.toLowerCase()}</span>.
           </p>

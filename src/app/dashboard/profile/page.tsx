@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { Card, Button, Badge } from "@/components/ui";
+import { formatDate } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export default async function ProfilePage() {
           <div className="flex justify-between py-2">
             <span className="text-sm text-gray-500 dark:text-gray-400">Member since</span>
             <span className="text-sm font-medium text-gray-900 dark:text-white">
-              {user.createdAt.toLocaleDateString()}
+              {formatDate(user.createdAt)}
             </span>
           </div>
         </div>

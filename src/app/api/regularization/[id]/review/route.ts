@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { apiResponse, apiError } from "@/lib/api-utils";
 import { hasPermission } from "@/lib/rbac";
 import { sendEmail, regularizationStatusEmail } from "@/lib/email";
-import { format } from "date-fns";
+import { formatIST } from "@/lib/datetime";
 import type { Role } from "@/generated/prisma/enums";
 
 export async function POST(
@@ -89,7 +89,7 @@ export async function POST(
       data: {
         userId: regularization.employeeId,
         title: `Regularization ${action === "APPROVED" ? "Approved" : "Rejected"}`,
-        message: `Your request for ${format(regularization.date, "MMM dd, yyyy")} has been ${action.toLowerCase()}.`,
+        message: `Your request for ${formatIST(regularization.date, "MMM dd, yyyy")} has been ${action.toLowerCase()}.`,
         link: "/dashboard/regularization",
       },
     });
@@ -101,7 +101,7 @@ export async function POST(
         subject: `Regularization ${action === "APPROVED" ? "Approved" : "Rejected"}`,
         html: regularizationStatusEmail(
           action as "APPROVED" | "REJECTED",
-          format(regularization.date, "MMM dd, yyyy"),
+          formatIST(regularization.date, "MMM dd, yyyy"),
           reviewNote
         ),
       });

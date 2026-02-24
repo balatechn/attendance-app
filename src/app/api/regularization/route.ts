@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { apiResponse, apiError, checkRateLimit } from "@/lib/api-utils";
 import { sendEmail, regularizationRequestEmail } from "@/lib/email";
-import { format } from "date-fns";
+import { formatIST } from "@/lib/datetime";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: employee.manager.id,
           title: "Regularization Request",
-          message: `${employee.name} requested attendance regularization for ${format(new Date(date), "MMM dd, yyyy")}`,
+          message: `${employee.name} requested attendance regularization for ${formatIST(new Date(date), "MMM dd, yyyy")}`,
           link: "/dashboard/approvals",
         },
       });
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
           subject: `Attendance Regularization Request - ${employee.name}`,
           html: regularizationRequestEmail(
             employee.name,
-            format(new Date(date), "MMM dd, yyyy"),
+            formatIST(new Date(date), "MMM dd, yyyy"),
             type.replace(/_/g, " "),
             reason
           ),

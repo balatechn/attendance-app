@@ -5,7 +5,8 @@ import { apiResponse, apiError, checkRateLimit } from "@/lib/api-utils";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 import { sendEmail } from "@/lib/email";
-import { format, differenceInCalendarDays } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
+import { formatIST } from "@/lib/datetime";
 
 export async function GET(request: NextRequest) {
   try {
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: employee.manager.id,
           title: "Leave Request",
-          message: `${employee.name} requested ${leaveType.name} (${days} day${days > 1 ? "s" : ""}) from ${format(start, "MMM dd")} to ${format(end, "MMM dd, yyyy")}`,
+          message: `${employee.name} requested ${leaveType.name} (${days} day${days > 1 ? "s" : ""}) from ${formatIST(start, "MMM dd")} to ${formatIST(end, "MMM dd, yyyy")}`,
           link: "/dashboard/leaves",
         },
       });
@@ -179,8 +180,8 @@ export async function POST(request: NextRequest) {
             </p>
             <table style="width:100%;border-collapse:collapse;margin:16px 0;">
               <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;width:120px;">Type</td><td style="padding:8px 12px;">${leaveType.name}</td></tr>
-              <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">From</td><td style="padding:8px 12px;">${format(start, "MMM dd, yyyy")}</td></tr>
-              <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">To</td><td style="padding:8px 12px;">${format(end, "MMM dd, yyyy")}</td></tr>
+              <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">From</td><td style="padding:8px 12px;">${formatIST(start, "MMM dd, yyyy")}</td></tr>
+              <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">To</td><td style="padding:8px 12px;">${formatIST(end, "MMM dd, yyyy")}</td></tr>
               <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">Days</td><td style="padding:8px 12px;">${days}</td></tr>
               <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">Reason</td><td style="padding:8px 12px;">${reason}</td></tr>
             </table>

@@ -1,15 +1,23 @@
 import { format, differenceInMinutes, startOfDay, endOfDay } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+
+const IST = "Asia/Kolkata";
 
 export function formatTime(date: Date | string): string {
-  return format(new Date(date), "hh:mm a");
+  return formatInTimeZone(new Date(date), IST, "hh:mm a");
 }
 
 export function formatDate(date: Date | string): string {
-  return format(new Date(date), "MMM dd, yyyy");
+  return formatInTimeZone(new Date(date), IST, "MMM dd, yyyy");
 }
 
 export function formatDateTime(date: Date | string): string {
-  return format(new Date(date), "MMM dd, yyyy hh:mm a");
+  return formatInTimeZone(new Date(date), IST, "MMM dd, yyyy hh:mm a");
+}
+
+/** Format with a custom pattern in IST */
+export function formatIST(date: Date | string, pattern: string): string {
+  return formatInTimeZone(new Date(date), IST, pattern);
 }
 
 export function minutesToHoursMinutes(mins: number): string {
@@ -71,6 +79,6 @@ export function isLateArrival(
   firstCheckIn: Date | string,
   lateThreshold = "09:30"
 ): boolean {
-  const time = format(new Date(firstCheckIn), "HH:mm");
+  const time = formatInTimeZone(new Date(firstCheckIn), IST, "HH:mm");
   return time > lateThreshold;
 }
