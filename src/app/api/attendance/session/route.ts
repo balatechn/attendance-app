@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
     // Create notification for the user
     const now = new Date();
-    const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
     if (type === "CHECK_IN") {
       await prisma.notification.create({
         data: {
