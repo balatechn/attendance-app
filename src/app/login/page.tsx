@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Card } from "@/components/ui";
@@ -99,6 +100,17 @@ export default function LoginPage() {
 
 
         </Card>
+
+        {/* Register link */}
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/register"
+            className="text-blue-600 dark:text-blue-400 font-medium hover:underline"
+          >
+            Create account
+          </Link>
+        </p>
       </div>
     </div>
   );

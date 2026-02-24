@@ -6,7 +6,7 @@ import { hasMinRole } from "@/lib/rbac";
 
 // Route protection config
 const PROTECTED_ROUTES = ["/dashboard"];
-const AUTH_ROUTES = ["/login"];
+const AUTH_ROUTES = ["/login", "/register"];
 
 const ROUTE_ROLES: Record<string, Role> = {
   "/dashboard/employees": "HR_ADMIN",
