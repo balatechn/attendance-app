@@ -130,6 +130,33 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create notification for the user
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    if (type === "CHECK_IN") {
+      await prisma.notification.create({
+        data: {
+          userId,
+          title: isLate ? "Late Check-In Recorded" : "Check-In Successful",
+          message: isLate
+            ? `You checked in late at ${timeStr}. Please ensure timely attendance.`
+            : `You checked in at ${timeStr}. Have a productive day!`,
+          link: "/dashboard",
+        },
+      });
+    } else {
+      const hours = Math.floor(workMins / 60);
+      const mins = workMins % 60;
+      await prisma.notification.create({
+        data: {
+          userId,
+          title: "Check-Out Successful",
+          message: `You checked out at ${timeStr}. Total work: ${hours}h ${mins}m${overtimeMins > 0 ? ` (${overtimeMins}m overtime)` : ""}.`,
+          link: "/dashboard",
+        },
+      });
+    }
+
     return apiResponse({
       session: {
         id: attendanceSession.id,

@@ -1,24 +1,39 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useAttendanceStore } from "@/lib/store";
 import { useLiveTimer } from "@/hooks/use-timer";
 
 export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => void }) {
   const { isCheckedIn, checkIn, checkOut, addToOfflineQueue } = useAttendanceStore();
-  const { latitude, longitude, loading: geoLoading, error: geoError, refresh } = useGeolocation();
+  const { latitude, longitude, accuracy, loading: geoLoading, error: geoError, refresh } = useGeolocation();
   const { formatted } = useLiveTimer();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Auto-retry geolocation if it fails (up to 3 times)
+  useEffect(() => {
+    if (geoError && retryCount < 3 && !latitude) {
+      const timer = setTimeout(() => {
+        refresh();
+        setRetryCount((c) => c + 1);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [geoError, retryCount, refresh, latitude]);
+
+  const hasLocation = latitude !== null && longitude !== null;
 
   const handleAction = useCallback(async () => {
     setError(null);
 
-    if (!latitude || !longitude) {
+    if (!hasLocation) {
       refresh();
-      setError("Please enable location access");
+      setRetryCount(0);
+      setError("Getting your location... Please wait and try again.");
       return;
     }
 
@@ -39,6 +54,7 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
         });
         if (type === "CHECK_IN") checkIn(latitude, longitude);
         else checkOut();
+        onSessionChange?.();
         return;
       }
 
@@ -77,7 +93,7 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
     } finally {
       setLoading(false);
     }
-  }, [latitude, longitude, isCheckedIn, refresh, checkIn, checkOut, addToOfflineQueue, onSessionChange]);
+  }, [hasLocation, latitude, longitude, isCheckedIn, refresh, checkIn, checkOut, addToOfflineQueue, onSessionChange]);
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -93,10 +109,49 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
         </div>
       )}
 
+      {/* Location status indicator */}
+      {!hasLocation && !geoLoading && geoError && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <div>
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Location required</p>
+            <p className="text-[10px] text-amber-600 dark:text-amber-500">{geoError}</p>
+          </div>
+          <button 
+            onClick={() => { refresh(); setRetryCount(0); }}
+            className="ml-2 text-xs font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {geoLoading && !hasLocation && (
+        <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+          <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Getting your location...
+        </div>
+      )}
+
+      {hasLocation && !isCheckedIn && (
+        <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Location ready{accuracy ? ` (±${Math.round(accuracy)}m)` : ""}
+        </div>
+      )}
+
       {/* Floating action button */}
       <button
         onClick={handleAction}
-        disabled={loading || geoLoading}
+        disabled={loading || (geoLoading && !hasLocation)}
         className={`
           relative w-20 h-20 rounded-full shadow-lg font-semibold text-white text-sm
           transition-all duration-300 active:scale-95
@@ -108,7 +163,7 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
           }
         `}
       >
-        {loading || geoLoading ? (
+        {loading || (geoLoading && !hasLocation) ? (
           <svg className="animate-spin h-6 w-6 mx-auto" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -136,10 +191,13 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
       </button>
 
       {/* Error message */}
-      {(error || geoError) && (
-        <p className="text-xs text-red-500 text-center max-w-[200px]">
-          {error || geoError}
-        </p>
+      {error && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 max-w-xs">
+          <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        </div>
       )}
 
       {/* Mini map preview */}
