@@ -82,3 +82,15 @@ export function isLateArrival(
   const time = formatInTimeZone(new Date(firstCheckIn), IST, "HH:mm");
   return time > lateThreshold;
 }
+
+/**
+ * Calculate the late threshold from a shift's start time + grace minutes.
+ * e.g., startTime "09:00" + graceMinutes 10 → "09:10"
+ */
+export function getShiftLateThreshold(startTime: string, graceMinutes: number): string {
+  const [h, m] = startTime.split(":").map(Number);
+  const totalMins = h * 60 + m + graceMinutes;
+  const hrs = Math.floor(totalMins / 60) % 24;
+  const mins = totalMins % 60;
+  return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}

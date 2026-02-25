@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, phone, role: employeeRole, departmentId, entityId, locationId, employeeCode, managerId } = body;
+    const { name, email, phone, role: employeeRole, departmentId, entityId, locationId, shiftId, employeeCode, managerId } = body;
 
     if (!name || !email) {
       return apiError("Name and email are required", 400);
@@ -102,6 +102,13 @@ export async function POST(request: NextRequest) {
     const tempPassword = generateTempPassword();
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
+    // Resolve shift: use provided, or fall back to default shift
+    let resolvedShiftId = shiftId || null;
+    if (!resolvedShiftId) {
+      const defaultShift = await prisma.shift.findFirst({ where: { isDefault: true, isActive: true } });
+      if (defaultShift) resolvedShiftId = defaultShift.id;
+    }
+
     const user = await prisma.user.create({
       data: {
         name,
@@ -112,6 +119,7 @@ export async function POST(request: NextRequest) {
         departmentId: departmentId || null,
         entityId: entityId || null,
         locationId: locationId || null,
+        shiftId: resolvedShiftId,
         employeeCode: employeeCode || null,
         managerId: managerId || null,
         mustChangePassword: true,

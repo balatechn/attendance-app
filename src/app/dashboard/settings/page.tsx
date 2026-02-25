@@ -15,7 +15,7 @@ export default async function SettingsPage() {
     redirect("/dashboard");
   }
 
-  const [departments, entities, locations, leaveTypes, emailConfig] = await Promise.all([
+  const [departments, entities, locations, shifts, leaveTypes, emailConfig] = await Promise.all([
     prisma.department.findMany({
       orderBy: { name: "asc" },
       include: { _count: { select: { users: true } } },
@@ -25,6 +25,10 @@ export default async function SettingsPage() {
       include: { _count: { select: { users: true } } },
     }),
     prisma.location.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { users: true } } },
+    }),
+    prisma.shift.findMany({
       orderBy: { name: "asc" },
       include: { _count: { select: { users: true } } },
     }),
@@ -61,6 +65,18 @@ export default async function SettingsPage() {
         isActive: l.isActive,
         userCount: l._count.users,
         createdAt: l.createdAt.toISOString(),
+      }))}
+      shifts={shifts.map((s) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        graceMinutes: s.graceMinutes,
+        standardWorkMins: s.standardWorkMins,
+        isDefault: s.isDefault,
+        isActive: s.isActive,
+        userCount: s._count.users,
       }))}
       leaveTypes={leaveTypes.map((lt) => ({
         id: lt.id,

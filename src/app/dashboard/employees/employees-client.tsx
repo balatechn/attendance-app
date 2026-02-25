@@ -18,8 +18,10 @@ interface Employee {
   entityId: string | null;
   locationId: string | null;
   managerId: string | null;
+  shiftId: string | null;
   department: { name: string } | null;
   location: { name: string } | null;
+  shift: { name: string } | null;
   reportingTo: string | null;
   isActive: boolean;
   isWorking: boolean;
@@ -36,6 +38,7 @@ interface Props {
   departments: { id: string; name: string }[];
   entities: { id: string; name: string }[];
   locations: { id: string; name: string }[];
+  shifts: { id: string; name: string }[];
   managers: { id: string; name: string }[];
 }
 
@@ -104,7 +107,7 @@ function LiveTimer({ checkInTime }: { checkInTime: string }) {
   );
 }
 
-export function EmployeesClient({ employees, canManageUsers, departments, entities, locations, managers }: Props) {
+export function EmployeesClient({ employees, canManageUsers, departments, entities, locations, shifts, managers }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -433,6 +436,7 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
           departments={departments}
           entities={entities}
           locations={locations}
+          shifts={shifts}
           managers={managers}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => router.refresh()}
@@ -453,11 +457,13 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
             entityId: editEmployee.entityId,
             locationId: editEmployee.locationId,
             managerId: editEmployee.managerId,
+            shiftId: editEmployee.shiftId,
             isActive: editEmployee.isActive,
           }}
           departments={departments}
           entities={entities}
           locations={locations}
+          shifts={shifts}
           managers={managers}
           onClose={() => setEditEmployee(null)}
           onSuccess={() => router.refresh()}

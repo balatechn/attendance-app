@@ -46,6 +46,19 @@ interface EmailConfigData {
   fromEmail: string;
 }
 
+interface ShiftData {
+  id: string;
+  name: string;
+  code: string;
+  startTime: string;
+  endTime: string;
+  graceMinutes: number;
+  standardWorkMins: number;
+  isDefault: boolean;
+  isActive: boolean;
+  userCount: number;
+}
+
 interface LeaveTypeData {
   id: string;
   name: string;
@@ -60,11 +73,12 @@ interface Props {
   departments: Department[];
   entities: Entity[];
   locations: Location[];
+  shifts: ShiftData[];
   leaveTypes: LeaveTypeData[];
   emailConfig: EmailConfigData | null;
 }
 
-type Tab = "departments" | "entities" | "locations" | "leave-types" | "email" | "general";
+type Tab = "departments" | "entities" | "locations" | "shifts" | "leave-types" | "email" | "general";
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -92,6 +106,15 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  {
+    key: "shifts",
+    label: "Shifts",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
   },
@@ -127,7 +150,7 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
 
 // ─── Main Component ───────────────────────────────────────
 
-export function SettingsClient({ departments, entities, locations, leaveTypes, emailConfig }: Props) {
+export function SettingsClient({ departments, entities, locations, shifts, leaveTypes, emailConfig }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("departments");
 
   return (
@@ -156,6 +179,7 @@ export function SettingsClient({ departments, entities, locations, leaveTypes, e
       {activeTab === "departments" && <DepartmentsTab departments={departments} />}
       {activeTab === "entities" && <EntitiesTab entities={entities} />}
       {activeTab === "locations" && <LocationsTab locations={locations} />}
+      {activeTab === "shifts" && <ShiftsTab shifts={shifts} />}
       {activeTab === "leave-types" && <LeaveTypesTab leaveTypes={leaveTypes} />}
       {activeTab === "email" && <EmailConfigTab config={emailConfig} />}
       {activeTab === "general" && <GeneralTab />}
@@ -739,6 +763,304 @@ function LocationsTab({ locations: initialLocations }: { locations: Location[] }
           <p className="text-center py-8 text-gray-400 text-sm">No locations yet. Click &quot;Add Location&quot; to create one.</p>
         )}
       </div>
+    </Card>
+  );
+}
+
+// ─── Shifts Tab ───────────────────────────────────────────
+
+function formatTimeDisplay(time: string) {
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${String(hour).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+function ShiftsTab({ shifts: initialShifts }: { shifts: ShiftData[] }) {
+  const router = useRouter();
+  const [shifts, setShifts] = useState(initialShifts);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    name: "",
+    code: "",
+    startTime: "09:00",
+    endTime: "17:00",
+    graceMinutes: 10,
+    standardWorkMins: 480,
+    isDefault: false,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const method = editingId ? "PUT" : "POST";
+      const body = editingId ? { id: editingId, ...form } : form;
+
+      const res = await fetch("/api/shifts", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error?.message || "Failed");
+        return;
+      }
+
+      setShowForm(false);
+      setEditingId(null);
+      setForm({ name: "", code: "", startTime: "09:00", endTime: "17:00", graceMinutes: 10, standardWorkMins: 480, isDefault: false });
+      router.refresh();
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (shift: ShiftData) => {
+    const res = await fetch("/api/shifts", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: shift.id, isActive: !shift.isActive }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setShifts((prev) =>
+        prev.map((s) => (s.id === shift.id ? { ...s, isActive: !s.isActive } : s))
+      );
+    }
+  };
+
+  const handleSetDefault = async (shift: ShiftData) => {
+    const res = await fetch("/api/shifts", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: shift.id, isDefault: true }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setShifts((prev) =>
+        prev.map((s) => ({ ...s, isDefault: s.id === shift.id }))
+      );
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this shift?")) return;
+    const res = await fetch("/api/shifts", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setShifts((prev) => prev.filter((s) => s.id !== id));
+    } else {
+      alert(data.error?.message || "Failed to delete");
+    }
+  };
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Shifts</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{shifts.length} shifts configured</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditingId(null);
+            setForm({ name: "", code: "", startTime: "09:00", endTime: "17:00", graceMinutes: 10, standardWorkMins: 480, isDefault: false });
+          }}
+        >
+          {showForm ? "Cancel" : "+ Add Shift"}
+        </Button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Shift Name"
+              placeholder="e.g., General Shift"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Code"
+              placeholder="e.g., GENERAL"
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
+              <input
+                type="time"
+                value={form.startTime}
+                onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">End Time</label>
+              <input
+                type="time"
+                value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Grace (min)</label>
+              <input
+                type="number"
+                min="0"
+                max="60"
+                value={form.graceMinutes}
+                onChange={(e) => setForm({ ...form, graceMinutes: parseInt(e.target.value) || 0 })}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Std Hours</label>
+              <input
+                type="number"
+                min="1"
+                max="24"
+                step="0.5"
+                value={form.standardWorkMins / 60}
+                onChange={(e) => setForm({ ...form, standardWorkMins: Math.round(parseFloat(e.target.value) * 60) || 480 })}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+              />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={form.isDefault}
+              onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
+              className="rounded"
+            />
+            Set as default shift for new employees
+          </label>
+          {error && <p className="text-red-500 text-xs">{error}</p>}
+          <Button type="submit" loading={loading} size="sm">
+            {editingId ? "Update" : "Create"} Shift
+          </Button>
+        </form>
+      )}
+
+      {/* Shift Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {shifts.map((shift) => (
+          <div
+            key={shift.id}
+            className={`relative p-4 rounded-xl border-2 transition-colors ${
+              shift.isDefault
+                ? "border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10"
+                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50"
+            }`}
+          >
+            {shift.isDefault && (
+              <span className="absolute top-2 right-2 text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                Default
+              </span>
+            )}
+            <div className="flex items-center gap-2 mb-2">
+              <h4 className="text-sm font-bold text-gray-900 dark:text-white">{shift.name}</h4>
+              <span className="text-[10px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                {shift.code}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 mb-3">
+              <div className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  {formatTimeDisplay(shift.startTime)} – {formatTimeDisplay(shift.endTime)}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+              <span>Grace: {shift.graceMinutes}min</span>
+              <span>•</span>
+              <span>Std: {shift.standardWorkMins / 60}h</span>
+              <span>•</span>
+              <span>{shift.userCount} employee{shift.userCount !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleToggleActive(shift)}
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                  shift.isActive
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                }`}
+              >
+                {shift.isActive ? "Active" : "Inactive"}
+              </button>
+              {!shift.isDefault && (
+                <button
+                  onClick={() => handleSetDefault(shift)}
+                  className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Set Default
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setEditingId(shift.id);
+                  setForm({
+                    name: shift.name,
+                    code: shift.code,
+                    startTime: shift.startTime,
+                    endTime: shift.endTime,
+                    graceMinutes: shift.graceMinutes,
+                    standardWorkMins: shift.standardWorkMins,
+                    isDefault: shift.isDefault,
+                  });
+                  setShowForm(true);
+                }}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors"
+                title="Edit"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleDelete(shift.id)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-600 transition-colors"
+                title="Delete"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {shifts.length === 0 && (
+        <p className="text-center py-8 text-gray-400 text-sm">No shifts configured yet. Click &quot;+ Add Shift&quot; to create one.</p>
+      )}
     </Card>
   );
 }

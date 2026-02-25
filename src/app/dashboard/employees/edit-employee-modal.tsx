@@ -24,6 +24,11 @@ interface Location {
   name: string;
 }
 
+interface Shift {
+  id: string;
+  name: string;
+}
+
 interface EmployeeData {
   id: string;
   name: string;
@@ -35,6 +40,7 @@ interface EmployeeData {
   entityId: string | null;
   locationId: string | null;
   managerId: string | null;
+  shiftId: string | null;
   isActive: boolean;
 }
 
@@ -43,6 +49,7 @@ interface Props {
   departments: Department[];
   entities: Entity[];
   locations: Location[];
+  shifts: Shift[];
   managers: Manager[];
   onClose: () => void;
   onSuccess: () => void;
@@ -60,6 +67,7 @@ export function EditEmployeeModal({
   departments,
   entities,
   locations,
+  shifts,
   managers,
   onClose,
   onSuccess,
@@ -78,6 +86,7 @@ export function EditEmployeeModal({
     entityId: employee.entityId || "",
     locationId: employee.locationId || "",
     managerId: employee.managerId || "",
+    shiftId: employee.shiftId || "",
     isActive: employee.isActive,
   });
 
@@ -303,19 +312,39 @@ export function EditEmployeeModal({
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Status
+                  Shift
                 </label>
                 <select
-                  value={form.isActive ? "active" : "inactive"}
+                  value={form.shiftId}
                   onChange={(e) =>
-                    setForm({ ...form, isActive: e.target.value === "active" })
+                    setForm({ ...form, shiftId: e.target.value })
                   }
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="">Select Shift</option>
+                  {shifts.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Status
+              </label>
+              <select
+                value={form.isActive ? "active" : "inactive"}
+                onChange={(e) =>
+                  setForm({ ...form, isActive: e.target.value === "active" })
+                }
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
 
             {error && (

@@ -24,10 +24,16 @@ interface Location {
   name: string;
 }
 
+interface Shift {
+  id: string;
+  name: string;
+}
+
 interface Props {
   departments: Department[];
   entities: Entity[];
   locations: Location[];
+  shifts: Shift[];
   managers: Manager[];
   onClose: () => void;
   onSuccess: () => void;
@@ -40,7 +46,7 @@ const ROLES: { value: Role; label: string }[] = [
   { value: "ADMIN", label: "Admin" },
 ];
 
-export function AddEmployeeModal({ departments, entities, locations, managers, onClose, onSuccess }: Props) {
+export function AddEmployeeModal({ departments, entities, locations, shifts, managers, onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tempPassword, setTempPassword] = useState("");
@@ -56,6 +62,7 @@ export function AddEmployeeModal({ departments, entities, locations, managers, o
     entityId: "",
     locationId: "",
     managerId: "",
+    shiftId: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -234,6 +241,19 @@ export function AddEmployeeModal({ departments, entities, locations, managers, o
                   <option value="">Select Manager</option>
                   {managers.map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Shift</label>
+                <select
+                  value={form.shiftId}
+                  onChange={(e) => setForm({ ...form, shiftId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+                >
+                  <option value="">Select Shift (default applied)</option>
+                  {shifts.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               </div>

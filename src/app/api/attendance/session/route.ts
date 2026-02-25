@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { apiResponse, apiError, checkRateLimit } from "@/lib/api-utils";
 import { isWithinGeofence } from "@/lib/geo";
-import { getDayRange, getWorkingMinutes, getOvertimeMinutes, isLateArrival } from "@/lib/datetime";
+import { getDayRange, getWorkingMinutes, getOvertimeMinutes, isLateArrival, getShiftLateThreshold } from "@/lib/datetime";
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,8 +95,19 @@ export async function POST(request: NextRequest) {
     const checkOuts = allSessions.filter((s) => s.type === "CHECK_OUT");
     const lastCheckOut = checkOuts.length > 0 ? checkOuts[checkOuts.length - 1].timestamp : null;
 
-    const overtimeMins = getOvertimeMinutes(workMins);
-    const isLate = firstCheckIn ? isLateArrival(firstCheckIn) : false;
+    // Fetch employee's shift for shift-aware late/overtime detection
+    const employee = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { shift: true },
+    });
+    const shift = employee?.shift;
+    const lateThreshold = shift
+      ? getShiftLateThreshold(shift.startTime, shift.graceMinutes)
+      : "09:10"; // fallback: 09:00 + 10min grace
+    const standardWorkMins = shift?.standardWorkMins ?? 480;
+
+    const overtimeMins = getOvertimeMinutes(workMins, standardWorkMins / 60);
+    const isLate = firstCheckIn ? isLateArrival(firstCheckIn, lateThreshold) : false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -134,12 +145,13 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
     if (type === "CHECK_IN") {
+      const shiftName = shift?.name || "General";
       await prisma.notification.create({
         data: {
           userId,
           title: isLate ? "Late Check-In Recorded" : "Check-In Successful",
           message: isLate
-            ? `You checked in late at ${timeStr}. Please ensure timely attendance.`
+            ? `You checked in late at ${timeStr} (${shiftName} shift starts at ${shift?.startTime || "09:00"}). Please ensure timely attendance.`
             : `You checked in at ${timeStr}. Have a productive day!`,
           link: "/dashboard",
         },

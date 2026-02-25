@@ -25,12 +25,13 @@ export default async function EmployeesPage() {
 
   const { start, end } = getDayRange(new Date());
 
-  const [employees, departments, entities, locations, managers] = await Promise.all([
+  const [employees, departments, entities, locations, shifts, managers] = await Promise.all([
     prisma.user.findMany({
       where,
       include: {
         department: true,
         location: true,
+        shift: { select: { name: true } },
         manager: { select: { name: true } },
         sessions: {
           where: { timestamp: { gte: start, lte: end } },
@@ -46,6 +47,7 @@ export default async function EmployeesPage() {
     canManageUsers ? prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.entity.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.location.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
+    canManageUsers ? prisma.shift.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.user.findMany({
       where: { role: { in: ["MANAGER", "HR_ADMIN", "ADMIN", "SUPER_ADMIN"] }, isActive: true },
       select: { id: true, name: true },
@@ -59,6 +61,7 @@ export default async function EmployeesPage() {
       departments={departments.map((d) => ({ id: d.id, name: d.name }))}
       entities={entities.map((e) => ({ id: e.id, name: e.name }))}
       locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+      shifts={shifts.map((s) => ({ id: s.id, name: s.name }))}
       managers={managers.map((m) => ({ id: m.id, name: m.name }))}
       employees={employees.map((e) => {
         const sessionCount = e.sessions.length;
@@ -79,8 +82,10 @@ export default async function EmployeesPage() {
           entityId: e.entityId,
           locationId: e.locationId,
           managerId: e.managerId,
+          shiftId: e.shiftId,
           department: e.department ? { name: e.department.name } : null,
           location: e.location ? { name: e.location.name } : null,
+          shift: e.shift ? { name: e.shift.name } : null,
           reportingTo: e.manager?.name || null,
           isActive: e.isActive,
           isWorking,

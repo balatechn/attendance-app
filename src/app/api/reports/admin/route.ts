@@ -214,6 +214,7 @@ async function lateArrivalsReport(
       name: true,
       employeeCode: true,
       department: { select: { name: true } },
+      shift: { select: { name: true, startTime: true } },
       dailySummaries: {
         where: {
           date: { gte: start, lte: end },
@@ -231,6 +232,7 @@ async function lateArrivalsReport(
     name: string;
     employeeCode: string;
     department: string;
+    shift: string;
     date: string;
     checkIn: string;
     lateDays?: number;
@@ -241,6 +243,7 @@ async function lateArrivalsReport(
     name: string;
     employeeCode: string;
     department: string;
+    shift: string;
     lateDays: number;
     dates: Array<{ date: string; checkIn: string }>;
   }> = [];
@@ -258,6 +261,7 @@ async function lateArrivalsReport(
       name: u.name,
       employeeCode: u.employeeCode || "-",
       department: u.department?.name || "-",
+      shift: u.shift ? `${u.shift.name} (${u.shift.startTime})` : "General",
       lateDays: u.dailySummaries.length,
       dates,
     });
@@ -268,6 +272,7 @@ async function lateArrivalsReport(
         name: u.name,
         employeeCode: u.employeeCode || "-",
         department: u.department?.name || "-",
+        shift: u.shift ? `${u.shift.name} (${u.shift.startTime})` : "General",
         date: formatIST(s.date, "yyyy-MM-dd"),
         checkIn: s.firstCheckIn ? formatIST(s.firstCheckIn, "HH:mm") : "-",
       });
@@ -280,6 +285,7 @@ async function lateArrivalsReport(
         "Employee Code": d.employeeCode,
         "Employee Name": d.name,
         Department: d.department,
+        Shift: d.shift,
         Date: d.date,
         "Check-In Time": d.checkIn,
       })),
