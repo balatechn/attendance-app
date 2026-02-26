@@ -29,7 +29,7 @@ export default async function AdminReportsPage() {
     }),
     prisma.location.findMany({
       where: { isActive: true },
-      select: { id: true, name: true },
+      select: { id: true, name: true, entityId: true },
       orderBy: { name: "asc" },
     }),
   ]);

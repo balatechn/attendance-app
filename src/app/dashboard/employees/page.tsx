@@ -47,7 +47,7 @@ export default async function EmployeesPage() {
     }),
     canManageUsers ? prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.entity.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
-    canManageUsers ? prisma.location.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
+    canManageUsers ? prisma.location.findMany({ where: { isActive: true }, select: { id: true, name: true, entityId: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.shift.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.user.findMany({
       where: { role: { in: ["MANAGER", "HR_ADMIN", "ADMIN", "SUPER_ADMIN"] }, isActive: true },
@@ -61,7 +61,7 @@ export default async function EmployeesPage() {
       canManageUsers={canManageUsers}
       departments={departments.map((d) => ({ id: d.id, name: d.name }))}
       entities={entities.map((e) => ({ id: e.id, name: e.name }))}
-      locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+      locations={locations.map((l) => ({ id: l.id, name: l.name, entityId: l.entityId }))}
       shifts={shifts.map((s) => ({ id: s.id, name: s.name }))}
       managers={managers.map((m) => ({ id: m.id, name: m.name }))}
       employees={employees.map((e) => {

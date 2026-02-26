@@ -38,7 +38,7 @@ interface Props {
   canManageUsers: boolean;
   departments: { id: string; name: string }[];
   entities: { id: string; name: string }[];
-  locations: { id: string; name: string }[];
+  locations: { id: string; name: string; entityId: string | null }[];
   shifts: { id: string; name: string }[];
   managers: { id: string; name: string }[];
 }
@@ -116,6 +116,11 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
   const [entityFilter, setEntityFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "working" | "not-working">("all");
+
+  // Filter locations by selected entity
+  const filteredLocations = entityFilter
+    ? locations.filter((l) => l.entityId === entityFilter)
+    : locations;
   const [showAddModal, setShowAddModal] = useState(false);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [resetEmployee, setResetEmployee] = useState<Employee | null>(null);
@@ -268,7 +273,10 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
         <div className="flex flex-col sm:flex-row gap-3">
           <select
             value={entityFilter}
-            onChange={(e) => setEntityFilter(e.target.value)}
+            onChange={(e) => {
+              setEntityFilter(e.target.value);
+              setLocationFilter("");
+            }}
             className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
           >
             <option value="">All Entities</option>
@@ -282,7 +290,7 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
             className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
           >
             <option value="">All Locations</option>
-            {locations.map((l) => (
+            {filteredLocations.map((l) => (
               <option key={l.id} value={l.id}>{l.name}</option>
             ))}
           </select>

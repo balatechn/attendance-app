@@ -20,6 +20,7 @@ interface EntityOption {
 interface LocationOption {
   id: string;
   name: string;
+  entityId: string | null;
 }
 
 interface AttendanceSummary {
@@ -129,6 +130,11 @@ export function AdminReportsClient({
   const [entity, setEntity] = useState("");
   const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Filter locations by selected entity
+  const filteredLocations = entity
+    ? locations.filter((l) => l.entityId === entity)
+    : locations;
   const [exporting, setExporting] = useState(false);
 
   // Report data states
@@ -309,7 +315,10 @@ export function AdminReportsClient({
               </label>
               <Select
                 value={entity}
-                onChange={(e) => setEntity(e.target.value)}
+                onChange={(e) => {
+                  setEntity(e.target.value);
+                  setLocation("");
+                }}
                 options={[
                   { value: "", label: "All Entities" },
                   ...entities.map((en) => ({
@@ -328,7 +337,7 @@ export function AdminReportsClient({
                 onChange={(e) => setLocation(e.target.value)}
                 options={[
                   { value: "", label: "All Locations" },
-                  ...locations.map((l) => ({
+                  ...filteredLocations.map((l) => ({
                     value: l.id,
                     label: l.name,
                   })),
