@@ -16,11 +16,29 @@ export default async function AdminReportsPage() {
     redirect("/dashboard");
   }
 
-  const departments = await prisma.department.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
+  const [departments, entities, locations] = await Promise.all([
+    prisma.department.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.entity.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.location.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
-  return <AdminReportsClient departments={departments} />;
+  return (
+    <AdminReportsClient
+      departments={departments}
+      entities={entities}
+      locations={locations}
+    />
+  );
 }

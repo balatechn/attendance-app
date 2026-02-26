@@ -12,6 +12,16 @@ interface Department {
   name: string;
 }
 
+interface EntityOption {
+  id: string;
+  name: string;
+}
+
+interface LocationOption {
+  id: string;
+  name: string;
+}
+
 interface AttendanceSummary {
   id: string;
   name: string;
@@ -101,8 +111,12 @@ const TABS: { key: ReportTab; label: string; icon: string }[] = [
 // ─── Main Component ───────────────────────────────────────
 export function AdminReportsClient({
   departments,
+  entities,
+  locations,
 }: {
   departments: Department[];
+  entities: EntityOption[];
+  locations: LocationOption[];
 }) {
   const [activeTab, setActiveTab] = useState<ReportTab>("attendance-summary");
   const [startDate, setStartDate] = useState(
@@ -112,6 +126,8 @@ export function AdminReportsClient({
     format(endOfMonth(new Date()), "yyyy-MM-dd")
   );
   const [department, setDepartment] = useState("");
+  const [entity, setEntity] = useState("");
+  const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -133,6 +149,8 @@ export function AdminReportsClient({
         end: endDate,
       });
       if (department) params.set("department", department);
+      if (entity) params.set("entity", entity);
+      if (location) params.set("location", location);
 
       const res = await fetch(`/api/reports/admin?${params}`);
       const json = await res.json();
@@ -161,7 +179,7 @@ export function AdminReportsClient({
     } finally {
       setLoading(false);
     }
-  }, [activeTab, startDate, endDate, department]);
+  }, [activeTab, startDate, endDate, department, entity, location]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -173,6 +191,8 @@ export function AdminReportsClient({
         export: "excel",
       });
       if (department) params.set("department", department);
+      if (entity) params.set("entity", entity);
+      if (location) params.set("location", location);
 
       const res = await fetch(`/api/reports/admin?${params}`);
       if (!res.ok) throw new Error("Export failed");
@@ -244,7 +264,7 @@ export function AdminReportsClient({
       {/* Filters */}
       <Card className="p-4">
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Start Date
@@ -277,6 +297,40 @@ export function AdminReportsClient({
                   ...departments.map((d) => ({
                     value: d.id,
                     label: d.name,
+                  })),
+                ]}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Entity
+              </label>
+              <Select
+                value={entity}
+                onChange={(e) => setEntity(e.target.value)}
+                options={[
+                  { value: "", label: "All Entities" },
+                  ...entities.map((en) => ({
+                    value: en.id,
+                    label: en.name,
+                  })),
+                ]}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Location
+              </label>
+              <Select
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                options={[
+                  { value: "", label: "All Locations" },
+                  ...locations.map((l) => ({
+                    value: l.id,
+                    label: l.name,
                   })),
                 ]}
               />

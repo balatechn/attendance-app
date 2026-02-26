@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("start");
     const endDate = searchParams.get("end");
     const departmentId = searchParams.get("department") || "";
+    const entityId = searchParams.get("entity") || "";
+    const locationId = searchParams.get("location") || "";
     const exportFormat = searchParams.get("export"); // "excel" or null
 
     if (!startDate || !endDate) {
@@ -34,6 +36,8 @@ export async function GET(request: NextRequest) {
 
     const userWhere: Record<string, unknown> = { isActive: true };
     if (departmentId) userWhere.departmentId = departmentId;
+    if (entityId) userWhere.entityId = entityId;
+    if (locationId) userWhere.locationId = locationId;
 
     switch (reportType) {
       case "attendance-summary":

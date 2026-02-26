@@ -20,6 +20,7 @@ interface Employee {
   managerId: string | null;
   shiftId: string | null;
   department: { name: string } | null;
+  entity: { name: string } | null;
   location: { name: string } | null;
   shift: { name: string } | null;
   reportingTo: string | null;
@@ -112,6 +113,8 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [deptFilter, setDeptFilter] = useState("");
+  const [entityFilter, setEntityFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "working" | "not-working">("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
@@ -160,13 +163,15 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
         e.email.toLowerCase().includes(search.toLowerCase());
       const matchRole = !roleFilter || e.role === roleFilter;
       const matchDept = !deptFilter || e.department?.name === deptFilter;
+      const matchEntity = !entityFilter || e.entityId === entityFilter;
+      const matchLocation = !locationFilter || e.locationId === locationFilter;
       const matchStatus =
         statusFilter === "all" ||
         (statusFilter === "working" && e.isWorking) ||
         (statusFilter === "not-working" && !e.isWorking);
-      return matchSearch && matchRole && matchDept && matchStatus;
+      return matchSearch && matchRole && matchDept && matchEntity && matchLocation && matchStatus;
     });
-  }, [employees, search, roleFilter, deptFilter, statusFilter]);
+  }, [employees, search, roleFilter, deptFilter, entityFilter, locationFilter, statusFilter]);
 
   const workingCount = employees.filter((e) => e.isWorking).length;
   const totalActive = employees.filter((e) => e.isActive).length;
@@ -215,48 +220,72 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1">
-          <Input
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <Input
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            value={deptFilter}
+            onChange={(e) => setDeptFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+          >
+            <option value="">All Departments</option>
+            {deptNames.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+          >
+            <option value="">All Roles</option>
+            {roles.map((r) => (
+              <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
+            ))}
+          </select>
+          <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {(["all", "working", "not-working"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${
+                  statusFilter === s
+                    ? "bg-blue-600 text-white"
+                    : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                {s === "all" ? "All" : s === "working" ? "🟢 Working" : "⚪ Off"}
+              </button>
+            ))}
+          </div>
         </div>
-        <select
-          value={deptFilter}
-          onChange={(e) => setDeptFilter(e.target.value)}
-          className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
-        >
-          <option value="">All Departments</option>
-          {deptNames.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
-        >
-          <option value="">All Roles</option>
-          {roles.map((r) => (
-            <option key={r} value={r}>{r.replace(/_/g, " ")}</option>
-          ))}
-        </select>
-        <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          {(["all", "working", "not-working"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-2 text-xs font-medium transition-colors ${
-                statusFilter === s
-                  ? "bg-blue-600 text-white"
-                  : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
-            >
-              {s === "all" ? "All" : s === "working" ? "🟢 Working" : "⚪ Off"}
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select
+            value={entityFilter}
+            onChange={(e) => setEntityFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+          >
+            <option value="">All Entities</option>
+            {entities.map((en) => (
+              <option key={en.id} value={en.id}>{en.name}</option>
+            ))}
+          </select>
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
+          >
+            <option value="">All Locations</option>
+            {locations.map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -307,6 +336,14 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
                     {emp.department && (
                       <span className="text-[10px] text-gray-400 dark:text-gray-500">
                         {emp.department.name}
+                      </span>
+                    )}
+                    {emp.entity && (
+                      <span className="text-[10px] text-emerald-500 dark:text-emerald-400 flex items-center gap-0.5">
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
+                        </svg>
+                        {emp.entity.name}
                       </span>
                     )}
                     {emp.location && (

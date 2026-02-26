@@ -30,6 +30,7 @@ export default async function EmployeesPage() {
       where,
       include: {
         department: true,
+        entity: true,
         location: true,
         shift: { select: { name: true } },
         manager: { select: { name: true } },
@@ -84,6 +85,7 @@ export default async function EmployeesPage() {
           managerId: e.managerId,
           shiftId: e.shiftId,
           department: e.department ? { name: e.department.name } : null,
+          entity: e.entity ? { name: e.entity.name } : null,
           location: e.location ? { name: e.location.name } : null,
           shift: e.shift ? { name: e.shift.name } : null,
           reportingTo: e.manager?.name || null,
