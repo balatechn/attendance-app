@@ -30,6 +30,8 @@ interface Location {
   name: string;
   code: string;
   address: string | null;
+  entityId: string | null;
+  entityName: string | null;
   isActive: boolean;
   userCount: number;
   createdAt: string;
@@ -178,7 +180,7 @@ export function SettingsClient({ departments, entities, locations, shifts, leave
       {/* Tab Content */}
       {activeTab === "departments" && <DepartmentsTab departments={departments} />}
       {activeTab === "entities" && <EntitiesTab entities={entities} />}
-      {activeTab === "locations" && <LocationsTab locations={locations} />}
+      {activeTab === "locations" && <LocationsTab locations={locations} entities={entities} />}
       {activeTab === "shifts" && <ShiftsTab shifts={shifts} />}
       {activeTab === "leave-types" && <LeaveTypesTab leaveTypes={leaveTypes} />}
       {activeTab === "email" && <EmailConfigTab config={emailConfig} />}
@@ -574,12 +576,12 @@ function EntitiesTab({ entities: initialEntities }: { entities: Entity[] }) {
 
 // ─── Locations Tab ────────────────────────────────────────
 
-function LocationsTab({ locations: initialLocations }: { locations: Location[] }) {
+function LocationsTab({ locations: initialLocations, entities }: { locations: Location[]; entities: Entity[] }) {
   const router = useRouter();
   const [locations, setLocations] = useState(initialLocations);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", code: "", address: "" });
+  const [form, setForm] = useState({ name: "", code: "", address: "", entityId: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -606,7 +608,7 @@ function LocationsTab({ locations: initialLocations }: { locations: Location[] }
 
       setShowForm(false);
       setEditingId(null);
-      setForm({ name: "", code: "", address: "" });
+      setForm({ name: "", code: "", address: "", entityId: "" });
       router.refresh();
     } catch {
       setError("Something went wrong");
@@ -656,7 +658,7 @@ function LocationsTab({ locations: initialLocations }: { locations: Location[] }
           onClick={() => {
             setShowForm(!showForm);
             setEditingId(null);
-            setForm({ name: "", code: "", address: "" });
+            setForm({ name: "", code: "", address: "", entityId: "" });
           }}
         >
           {showForm ? "Cancel" : "+ Add Location"}
@@ -687,6 +689,19 @@ function LocationsTab({ locations: initialLocations }: { locations: Location[] }
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
           />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entity</label>
+            <select
+              value={form.entityId}
+              onChange={(e) => setForm({ ...form, entityId: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300"
+            >
+              <option value="">— No Entity —</option>
+              {entities.filter((en) => en.isActive).map((en) => (
+                <option key={en.id} value={en.id}>{en.name}</option>
+              ))}
+            </select>
+          </div>
           {error && <p className="text-red-500 text-xs">{error}</p>}
           <Button type="submit" loading={loading} size="sm">
             {editingId ? "Update" : "Create"} Location
@@ -711,6 +726,7 @@ function LocationsTab({ locations: initialLocations }: { locations: Location[] }
               <tr key={location.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className="py-3 px-3 font-medium text-gray-900 dark:text-white">{location.name}</td>
                 <td className="py-3 px-3 text-gray-500 dark:text-gray-400 font-mono text-xs">{location.code}</td>
+                <td className="py-3 px-3 text-gray-500 dark:text-gray-400 text-xs hidden md:table-cell">{location.entityName || "—"}</td>
                 <td className="py-3 px-3 text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell">{location.address || "—"}</td>
                 <td className="py-3 px-3 text-center">
                   <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold">
@@ -734,7 +750,7 @@ function LocationsTab({ locations: initialLocations }: { locations: Location[] }
                     <button
                       onClick={() => {
                         setEditingId(location.id);
-                        setForm({ name: location.name, code: location.code, address: location.address || "" });
+                        setForm({ name: location.name, code: location.code, address: location.address || "", entityId: location.entityId || "" });
                         setShowForm(true);
                       }}
                       className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors"

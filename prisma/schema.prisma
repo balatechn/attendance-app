@@ -102,6 +102,7 @@ model Entity {
   updatedAt DateTime @updatedAt
 
   users     User[]
+  locations Location[]
 }
 
 model EmailConfig {
@@ -235,11 +236,15 @@ model Location {
   name      String   @unique
   code      String   @unique
   address   String?
+  entityId  String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  entity    Entity?  @relation(fields: [entityId], references: [id])
   users     User[]
+
+  @@index([entityId])
 }
 
 model LeaveType {

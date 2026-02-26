@@ -26,7 +26,10 @@ export default async function SettingsPage() {
     }),
     prisma.location.findMany({
       orderBy: { name: "asc" },
-      include: { _count: { select: { users: true } } },
+      include: {
+        _count: { select: { users: true } },
+        entity: { select: { name: true } },
+      },
     }),
     prisma.shift.findMany({
       orderBy: { name: "asc" },
@@ -62,6 +65,8 @@ export default async function SettingsPage() {
         name: l.name,
         code: l.code,
         address: l.address,
+        entityId: l.entityId,
+        entityName: l.entity?.name || null,
         isActive: l.isActive,
         userCount: l._count.users,
         createdAt: l.createdAt.toISOString(),

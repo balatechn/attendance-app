@@ -11,7 +11,10 @@ export async function GET() {
     if (!session?.user) return apiError("Unauthorized", 401);
 
     const locations = await prisma.location.findMany({
-      include: { _count: { select: { users: true } } },
+      include: {
+        _count: { select: { users: true } },
+        entity: { select: { name: true } },
+      },
       orderBy: { name: "asc" },
     });
 
@@ -21,6 +24,8 @@ export async function GET() {
         name: l.name,
         code: l.code,
         address: l.address,
+        entityId: l.entityId,
+        entityName: l.entity?.name || null,
         isActive: l.isActive,
         userCount: l._count.users,
         createdAt: l.createdAt.toISOString(),
@@ -42,7 +47,7 @@ export async function POST(request: NextRequest) {
       return apiError("Forbidden", 403);
     }
 
-    const { name, code, address } = await request.json();
+    const { name, code, address, entityId } = await request.json();
 
     if (!name || !code) {
       return apiError("Name and code are required");
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const location = await prisma.location.create({
-      data: { name, code: code.toUpperCase(), address: address || null },
+      data: { name, code: code.toUpperCase(), address: address || null, entityId: entityId || null },
     });
 
     return apiResponse(location, 201);
@@ -76,13 +81,14 @@ export async function PUT(request: NextRequest) {
       return apiError("Forbidden", 403);
     }
 
-    const { id, name, code, address, isActive } = await request.json();
+    const { id, name, code, address, entityId, isActive } = await request.json();
     if (!id) return apiError("Location ID is required");
 
     const data: Record<string, unknown> = {};
     if (name !== undefined) data.name = name;
     if (code !== undefined) data.code = code.toUpperCase();
     if (address !== undefined) data.address = address || null;
+    if (entityId !== undefined) data.entityId = entityId || null;
     if (isActive !== undefined) data.isActive = isActive;
 
     const location = await prisma.location.update({
