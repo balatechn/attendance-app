@@ -14,7 +14,7 @@ interface OverviewData {
   pendingApprovals: number;
 }
 
-interface EntityStat {
+interface LocationStat {
   id: string;
   name: string;
   total: number;
@@ -41,7 +41,7 @@ interface WeeklyTrend {
 
 interface DashboardData {
   overview: OverviewData;
-  entities: EntityStat[];
+  locations: LocationStat[];
   recentActivity: RecentActivity[];
   weeklyTrend: WeeklyTrend[];
 }
@@ -193,18 +193,18 @@ function WeeklyTrendChart({ data, maxEmployees }: { data: WeeklyTrend[]; maxEmpl
 }
 
 // ─── Department Table ─────────────────────────────────────
-function EntityTable({ entities }: { entities: EntityStat[] }) {
+function LocationTable({ locations }: { locations: LocationStat[] }) {
   return (
     <Card>
       <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
-        Entity-wise Summary
+        Location wise Summary
       </h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 dark:border-gray-700">
               <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400">
-                Entity
+                Location
               </th>
               <th className="text-center py-2 px-3 text-xs font-medium text-gray-500 dark:text-gray-400">
                 Total
@@ -224,43 +224,43 @@ function EntityTable({ entities }: { entities: EntityStat[] }) {
             </tr>
           </thead>
           <tbody>
-            {entities.map((entity) => (
+            {locations.map((loc) => (
               <tr
-                key={entity.id}
+                key={loc.id}
                 className="border-b border-gray-100 dark:border-gray-800 last:border-0"
               >
                 <td className="py-2.5 px-3 font-medium text-gray-900 dark:text-white">
-                  {entity.name}
+                  {loc.name}
                 </td>
                 <td className="py-2.5 px-3 text-center text-gray-600 dark:text-gray-400">
-                  {entity.total}
+                  {loc.total}
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className="text-green-600 dark:text-green-400 font-medium">
-                    {entity.present}
+                    {loc.present}
                   </span>
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className="text-red-600 dark:text-red-400 font-medium">
-                    {entity.absent}
+                    {loc.absent}
                   </span>
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className="text-yellow-600 dark:text-yellow-400 font-medium">
-                    {entity.late}
+                    {loc.late}
                   </span>
                 </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className="text-purple-600 dark:text-purple-400 font-medium">
-                    {entity.onLeave}
+                    {loc.onLeave}
                   </span>
                 </td>
               </tr>
             ))}
-            {entities.length === 0 && (
+            {locations.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-gray-400">
-                  No entities found
+                  No locations found
                 </td>
               </tr>
             )}
@@ -402,7 +402,7 @@ export function ManagementDashboardClient() {
     );
   }
 
-  const { overview, entities, recentActivity, weeklyTrend } = data;
+  const { overview, locations, recentActivity, weeklyTrend } = data;
   const presentPct = overview.totalEmployees
     ? Math.round((overview.presentToday / overview.totalEmployees) * 100)
     : 0;
@@ -480,8 +480,8 @@ export function ManagementDashboardClient() {
         <WeeklyTrendChart data={weeklyTrend} maxEmployees={overview.totalEmployees} />
       </div>
 
-      {/* Entity Table */}
-      <EntityTable entities={entities} />
+      {/* Location Table */}
+      <LocationTable locations={locations} />
 
       {/* Recent Activity */}
       <RecentActivityFeed activities={recentActivity} />
