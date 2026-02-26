@@ -17,9 +17,10 @@ const IST = "Asia/Kolkata";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify cron secret
+    // Verify cron secret (supports both Vercel Cron header and Authorization header)
     const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       return apiError("Unauthorized", 401);
     }
 
