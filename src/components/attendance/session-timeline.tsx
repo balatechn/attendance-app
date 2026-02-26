@@ -9,6 +9,7 @@ interface Session {
   timestamp: string;
   latitude: number;
   longitude: number;
+  address?: string | null;
 }
 
 interface SessionTimelineProps {
@@ -67,8 +68,8 @@ export function SessionTimeline({ sessions }: SessionTimelineProps) {
                   {session.type === "CHECK_IN" ? "In" : "Out"}
                 </Badge>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                📍 {session.latitude.toFixed(4)}, {session.longitude.toFixed(4)}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-[260px]" title={session.address || `${session.latitude.toFixed(4)}, ${session.longitude.toFixed(4)}`}>
+                📍 {session.address || `${session.latitude.toFixed(4)}, ${session.longitude.toFixed(4)}`}
               </p>
             </div>
           </div>

@@ -64,6 +64,7 @@ export async function GET() {
           id: true,
           type: true,
           timestamp: true,
+          address: true,
           user: { select: { name: true, department: { select: { name: true } } } },
         },
       }),
@@ -128,6 +129,7 @@ export async function GET() {
       employeeName: s.user.name,
       department: s.user.department?.name || "—",
       time: formatIST(new Date(s.timestamp), "hh:mm a"),
+      address: s.address || null,
     }));
 
     return apiResponse({

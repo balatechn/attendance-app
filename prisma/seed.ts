@@ -255,6 +255,7 @@ async function main() {
       { key: "LATE_THRESHOLD", value: "09:30" },
       { key: "AUTO_CHECKOUT_HOUR", value: "23" },
       { key: "DEFAULT_GEOFENCE_RADIUS", value: "200" },
+      { key: "GEOFENCE_ENFORCE", value: "false" },
     ],
   });
 

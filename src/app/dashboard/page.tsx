@@ -49,6 +49,7 @@ export default async function DashboardPage() {
         timestamp: s.timestamp.toISOString(),
         latitude: s.latitude,
         longitude: s.longitude,
+        address: s.address || null,
       }))}
       summary={
         dailySummary

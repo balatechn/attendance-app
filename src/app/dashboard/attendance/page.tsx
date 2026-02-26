@@ -83,6 +83,7 @@ export default async function AttendancePage({
         timestamp: s.timestamp.toISOString(),
         latitude: s.latitude,
         longitude: s.longitude,
+        address: s.address || null,
       }))}
       recentDays={recentSummaries.map((d) => ({
         date: d.date.toISOString(),

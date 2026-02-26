@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Input } from "@/components/ui";
 
@@ -1534,48 +1534,134 @@ function EmailConfigTab({ config }: { config: EmailConfigData | null }) {
 // ─── General Settings Tab ─────────────────────────────────
 
 function GeneralTab() {
+  const [configs, setConfigs] = useState<Record<string, string>>({});
+  const [loadingConfigs, setLoadingConfigs] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings/app-config")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) setConfigs(d.data);
+      })
+      .finally(() => setLoadingConfigs(false));
+  }, []);
+
+  const toggleConfig = async (key: string) => {
+    const current = configs[key] === "true";
+    const newVal = (!current).toString();
+    setSavingKey(key);
+    try {
+      const res = await fetch("/api/settings/app-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ configs: { [key]: newVal } }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setConfigs((prev) => ({ ...prev, [key]: newVal }));
+      }
+    } catch { /* ignore */ }
+    setSavingKey(null);
+  };
+
+  const geofenceEnforced = configs["GEOFENCE_ENFORCE"] === "true";
+
   return (
     <Card>
       <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
         General Settings
       </h3>
-      <div className="space-y-4">
-        {[
-          { label: "Standard Work Hours", desc: "Hours expected per day", value: "8h" },
-          { label: "Late Arrival Threshold", desc: "Time after which arrival is late", value: "09:30" },
-          { label: "Auto Checkout", desc: "Auto checkout if forgot", value: "11:00 PM" },
-          { label: "Default Geofence Radius", desc: "In meters", value: "200m" },
-        ].map((item, i) => (
-          <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{item.label}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
-            </div>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">{item.value}</span>
-          </div>
-        ))}
-      </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
-          Email Notifications
-        </h3>
-        <div className="space-y-3">
-          {[
-            "Send email on regularization request",
-            "Send email on approval/rejection",
-            "Daily summary email to managers",
-            "Weekly report to HR",
-          ].map((label) => (
-            <div key={label} className="flex items-center justify-between py-2">
-              <p className="text-sm text-gray-700 dark:text-gray-300">{label}</p>
-              <div className="w-10 h-6 bg-blue-600 rounded-full relative cursor-pointer">
-                <div className="absolute right-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform" />
+      {loadingConfigs ? (
+        <p className="text-sm text-gray-400">Loading...</p>
+      ) : (
+        <>
+          <div className="space-y-4">
+            {[
+              { label: "Standard Work Hours", desc: "Hours expected per day", key: "STANDARD_WORK_HOURS", suffix: "h" },
+              { label: "Late Arrival Threshold", desc: "Time after which arrival is late", key: "LATE_THRESHOLD", suffix: "" },
+              { label: "Auto Checkout Hour", desc: "Auto checkout if forgot (24h format)", key: "AUTO_CHECKOUT_HOUR", suffix: ":00" },
+              { label: "Default Geofence Radius", desc: "In meters", key: "DEFAULT_GEOFENCE_RADIUS", suffix: "m" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{item.label}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
+                </div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {configs[item.key] || "-"}{item.suffix}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+              Location & Geofence
+            </h3>
+            <div className="space-y-3">
+              {/* Geofence Enforce Toggle */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Enforce Geofence</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {geofenceEnforced
+                      ? "Employees can only check in/out within geofence zones"
+                      : "Location is captured but check-in/out is allowed from anywhere"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => toggleConfig("GEOFENCE_ENFORCE")}
+                  disabled={savingKey === "GEOFENCE_ENFORCE"}
+                  className={`w-11 h-6 rounded-full relative transition-colors duration-200 ${
+                    geofenceEnforced ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                  } ${savingKey === "GEOFENCE_ENFORCE" ? "opacity-50" : "cursor-pointer"}`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                      geofenceEnforced ? "translate-x-5.5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Always capture location info */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    GPS location and address are always captured on every check-in and check-out, regardless of this setting.
+                  </p>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+              Email Notifications
+            </h3>
+            <div className="space-y-3">
+              {[
+                "Send email on regularization request",
+                "Send email on approval/rejection",
+                "Daily summary email to managers",
+                "Weekly report to HR",
+              ].map((label) => (
+                <div key={label} className="flex items-center justify-between py-2">
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{label}</p>
+                  <div className="w-10 h-6 bg-blue-600 rounded-full relative cursor-pointer">
+                    <div className="absolute right-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </Card>
   );
 }

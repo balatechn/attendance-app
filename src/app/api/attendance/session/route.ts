@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { apiResponse, apiError, checkRateLimit } from "@/lib/api-utils";
 import { isWithinGeofence } from "@/lib/geo";
+import { reverseGeocode } from "@/lib/geocode";
 import { getDayRange, getWorkingMinutes, getOvertimeMinutes, isLateArrival, getShiftLateThreshold } from "@/lib/datetime";
 
 export async function POST(request: NextRequest) {
@@ -49,26 +50,36 @@ export async function POST(request: NextRequest) {
       return apiError("Cannot check out without checking in first");
     }
 
-    // Geofence validation
-    const geoFences = await prisma.geoFence.findMany({
-      where: { isActive: true },
+    // Geofence validation (only enforce if GEOFENCE_ENFORCE is true)
+    const geofenceConfig = await prisma.appConfig.findUnique({
+      where: { key: "GEOFENCE_ENFORCE" },
     });
+    const enforceGeofence = geofenceConfig?.value === "true";
 
-    if (geoFences.length > 0) {
-      const { allowed, nearestDistance } = isWithinGeofence(
-        latitude,
-        longitude,
-        geoFences
-      );
+    if (enforceGeofence) {
+      const geoFences = await prisma.geoFence.findMany({
+        where: { isActive: true },
+      });
 
-      if (!allowed) {
-        return apiError(
-          `You are ${nearestDistance}m away from the nearest allowed location. Please move closer.`,
-          403,
-          "OUTSIDE_GEOFENCE"
+      if (geoFences.length > 0) {
+        const { allowed, nearestDistance } = isWithinGeofence(
+          latitude,
+          longitude,
+          geoFences
         );
+
+        if (!allowed) {
+          return apiError(
+            `You are ${nearestDistance}m away from the nearest allowed location. Please move closer.`,
+            403,
+            "OUTSIDE_GEOFENCE"
+          );
+        }
       }
     }
+
+    // Reverse geocode to get address (non-blocking — fallback to coords)
+    const address = await reverseGeocode(latitude, longitude);
 
     // Create session
     const attendanceSession = await prisma.attendanceSession.create({
@@ -77,6 +88,7 @@ export async function POST(request: NextRequest) {
         type,
         latitude,
         longitude,
+        address,
         deviceInfo: deviceInfo || null,
         timestamp: new Date(),
       },
@@ -214,6 +226,7 @@ export async function GET(request: NextRequest) {
         timestamp: s.timestamp.toISOString(),
         latitude: s.latitude,
         longitude: s.longitude,
+        address: s.address || null,
       }))
     );
   } catch (error) {

@@ -154,12 +154,22 @@ async function dailyAttendanceReport(
         where: { date: { gte: dayStart, lte: dayEnd } },
         take: 1,
       },
+      sessions: {
+        where: { timestamp: { gte: dayStart, lte: dayEnd } },
+        orderBy: { timestamp: "asc" },
+        select: { type: true, address: true },
+      },
     },
     orderBy: { name: "asc" },
   });
 
   const data = users.map((u) => {
     const summary = u.dailySummaries[0];
+    const sessions = u.sessions || [];
+    const firstCheckInSession = sessions.find((s) => s.type === "CHECK_IN");
+    const checkOuts = sessions.filter((s) => s.type === "CHECK_OUT");
+    const lastCheckOutSession = checkOuts.length > 0 ? checkOuts[checkOuts.length - 1] : null;
+
     return {
       id: u.id,
       name: u.name,
@@ -172,6 +182,8 @@ async function dailyAttendanceReport(
       lastCheckOut: summary?.lastCheckOut
         ? formatIST(summary.lastCheckOut, "HH:mm")
         : "-",
+      checkInLocation: firstCheckInSession?.address || "-",
+      checkOutLocation: lastCheckOutSession?.address || "-",
       workHours: summary ? +(summary.totalWorkMins / 60).toFixed(1) : 0,
       breakHours: summary ? +(summary.totalBreakMins / 60).toFixed(1) : 0,
       sessions: summary?.sessionCount || 0,
@@ -187,7 +199,9 @@ async function dailyAttendanceReport(
         Department: d.department,
         Status: d.status,
         "Check-In": d.firstCheckIn,
+        "Check-In Location": d.checkInLocation,
         "Check-Out": d.lastCheckOut,
+        "Check-Out Location": d.checkOutLocation,
         "Work Hours": d.workHours,
         "Break Hours": d.breakHours,
         Sessions: d.sessions,

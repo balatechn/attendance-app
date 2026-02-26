@@ -30,6 +30,7 @@ interface RecentActivity {
   employeeName: string;
   department: string;
   time: string;
+  address?: string | null;
 }
 
 interface WeeklyTrend {
@@ -300,6 +301,11 @@ function RecentActivityFeed({ activities }: { activities: RecentActivity[] }) {
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {a.department}
               </p>
+              {a.address && (
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate mt-0.5" title={a.address}>
+                  📍 {a.address}
+                </p>
+              )}
             </div>
             <div className="text-right flex-shrink-0">
               <Badge

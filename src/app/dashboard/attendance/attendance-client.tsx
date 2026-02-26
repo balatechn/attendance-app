@@ -14,6 +14,7 @@ interface Props {
     timestamp: string;
     latitude: number;
     longitude: number;
+    address?: string | null;
   }>;
   recentDays: Array<{
     date: string;

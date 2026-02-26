@@ -36,6 +36,8 @@ interface DailyAttendance {
   status: string;
   firstCheckIn: string;
   lastCheckOut: string;
+  checkInLocation: string;
+  checkOutLocation: string;
   workHours: number;
   breakHours: number;
   sessions: number;
@@ -591,6 +593,9 @@ function DailyAttendanceTable({ data }: { data: DailyAttendance[] }) {
               <th className="text-center px-3 py-3 font-semibold text-gray-600 dark:text-gray-300">
                 Check Out
               </th>
+              <th className="text-left px-3 py-3 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">
+                Location
+              </th>
               <th className="text-center px-3 py-3 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">
                 Work Hrs
               </th>
@@ -630,6 +635,15 @@ function DailyAttendanceTable({ data }: { data: DailyAttendance[] }) {
                 </td>
                 <td className="text-center px-3 py-3 text-gray-700 dark:text-gray-300">
                   {row.lastCheckOut}
+                </td>
+                <td className="text-left px-3 py-3 hidden lg:table-cell">
+                  {row.checkInLocation && row.checkInLocation !== "-" ? (
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[200px]" title={row.checkInLocation}>
+                      📍 {row.checkInLocation}
+                    </p>
+                  ) : (
+                    <span className="text-gray-300 dark:text-gray-600">-</span>
+                  )}
                 </td>
                 <td className="text-center px-3 py-3 font-medium hidden md:table-cell">
                   {row.workHours}
