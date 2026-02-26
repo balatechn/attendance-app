@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/attendance-reminders",
+      "schedule": "15,45 3-14 * * 1-6"
+    }
+  ]
+}
