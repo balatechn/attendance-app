@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     let where: Record<string, unknown> = {};
 
     if (hasPermission(role, "leave:view-all")) {
-      // HR/Admin can see all
+      // HR/Admin can see all (entity filter below)
       if (status) where.status = status;
     } else if (hasPermission(role, "leave:approve")) {
       // Managers see their team's and their own
@@ -37,6 +37,11 @@ export async function GET(request: NextRequest) {
       // Employees see only their own
       where = { userId: session.user.id };
       if (status) where.status = status;
+    }
+
+    // Entity-based visibility: only SUPER_ADMIN sees all entities
+    if (role !== "SUPER_ADMIN" && session.user.entityId && hasPermission(role, "leave:view-all")) {
+      where.user = { ...(where.user as object || {}), entityId: session.user.entityId };
     }
 
     const requests = await prisma.leaveRequest.findMany({

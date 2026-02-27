@@ -17,10 +17,14 @@ export default async function LeavesPage() {
   const canApprove = hasPermission(role, "leave:approve");
   const canViewAll = hasPermission(role, "leave:view-all");
 
+  // Entity-based visibility: only SUPER_ADMIN sees all entities
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  const userEntityId = session.user.entityId;
+
   // Determine requests filter
   let requestsWhere: Record<string, unknown> = {};
   if (canViewAll) {
-    // Show all
+    // Show all (entity filter applied below)
   } else if (canApprove) {
     requestsWhere = {
       OR: [
@@ -30,6 +34,13 @@ export default async function LeavesPage() {
     };
   } else {
     requestsWhere = { userId };
+  }
+
+  // Apply entity filter for non-SUPER_ADMIN who can view-all or approve
+  if (!isSuperAdmin && userEntityId && (canViewAll || canApprove)) {
+    if (canViewAll && !requestsWhere.OR) {
+      requestsWhere.user = { ...(requestsWhere.user as object || {}), entityId: userEntityId };
+    }
   }
 
   const [leaveTypes, requests, balances] = await Promise.all([

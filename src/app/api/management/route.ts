@@ -20,6 +20,12 @@ export async function GET() {
     const todayStart = startOfDay(now);
     const todayEnd = endOfDay(now);
 
+    // Entity-based visibility: only SUPER_ADMIN sees all entities
+    const isSuperAdmin = role === "SUPER_ADMIN";
+    const userEntityId = session.user.entityId;
+    const entityFilter: Record<string, unknown> = (!isSuperAdmin && userEntityId) ? { entityId: userEntityId } : {};
+    const userEntityFilter: Record<string, unknown> = { isActive: true, ...entityFilter };
+
     // Run all queries in parallel
     const [
       totalEmployees,
@@ -32,11 +38,11 @@ export async function GET() {
       departmentStats,
     ] = await Promise.all([
       // Total active employees
-      prisma.user.count({ where: { isActive: true } }),
+      prisma.user.count({ where: userEntityFilter }),
 
       // Today's daily summaries
       prisma.dailySummary.findMany({
-        where: { date: { gte: todayStart, lte: todayEnd } },
+        where: { date: { gte: todayStart, lte: todayEnd }, user: entityFilter },
         select: { status: true },
       }),
 
@@ -46,18 +52,19 @@ export async function GET() {
           status: "APPROVED",
           startDate: { lte: todayEnd },
           endDate: { gte: todayStart },
+          user: entityFilter,
         },
       }),
 
       // Pending regularizations
-      prisma.regularization.count({ where: { status: "PENDING" } }),
+      prisma.regularization.count({ where: { status: "PENDING", employee: entityFilter } }),
 
       // Pending leave requests
-      prisma.leaveRequest.count({ where: { status: "PENDING" } }),
+      prisma.leaveRequest.count({ where: { status: "PENDING", user: entityFilter } }),
 
       // Recent check-ins/check-outs (last 10)
       prisma.attendanceSession.findMany({
-        where: { timestamp: { gte: todayStart } },
+        where: { timestamp: { gte: todayStart }, user: entityFilter },
         orderBy: { timestamp: "desc" },
         take: 10,
         select: {
@@ -76,7 +83,7 @@ export async function GET() {
           const dayStart = startOfDay(date);
           const dayEnd = endOfDay(date);
           return prisma.dailySummary
-            .count({ where: { date: { gte: dayStart, lte: dayEnd } } })
+            .count({ where: { date: { gte: dayStart, lte: dayEnd }, user: entityFilter } })
             .then((count) => ({
               date: formatIST(date, "EEE"),
               fullDate: formatIST(date, "MMM dd"),
@@ -87,7 +94,7 @@ export async function GET() {
 
       // Location-wise stats for today
       prisma.location.findMany({
-        where: { isActive: true },
+        where: { isActive: true, ...( (!isSuperAdmin && userEntityId) ? { entityId: userEntityId } : {}) },
         select: {
           id: true,
           name: true,
@@ -109,7 +116,7 @@ export async function GET() {
     ]);
 
     // Calculate overview stats
-    const managementCount = await prisma.user.count({ where: { isActive: true, role: "MANAGEMENT" } });
+    const managementCount = await prisma.user.count({ where: { ...userEntityFilter, role: "MANAGEMENT" } });
     const presentCount = todaySummaries.filter((s) => s.status === "PRESENT" || s.status === "LATE" || s.status === "HALF_DAY").length + managementCount;
     const lateCount = todaySummaries.filter((s) => s.status === "LATE").length;
     const absentCount = totalEmployees - presentCount - todayLeaves;

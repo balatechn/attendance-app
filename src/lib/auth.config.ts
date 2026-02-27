@@ -14,6 +14,7 @@ export const authConfig = {
         token.id = user.id!;
         token.role = user.role;
         token.departmentId = user.departmentId;
+        token.entityId = user.entityId;
         token.managerId = user.managerId;
         token.mustChangePassword = user.mustChangePassword;
       }
@@ -23,6 +24,7 @@ export const authConfig = {
       session.user.id = token.id as string;
       session.user.role = token.role as Role;
       session.user.departmentId = token.departmentId as string | null;
+      session.user.entityId = token.entityId as string | null;
       session.user.managerId = token.managerId as string | null;
       session.user.mustChangePassword = token.mustChangePassword as boolean;
       return session;

@@ -8,6 +8,7 @@ declare module "next-auth" {
       name: string;
       role: Role;
       departmentId: string | null;
+      entityId: string | null;
       managerId: string | null;
       mustChangePassword: boolean;
     };
@@ -15,6 +16,7 @@ declare module "next-auth" {
   interface User {
     role: Role;
     departmentId: string | null;
+    entityId: string | null;
     managerId: string | null;
     mustChangePassword: boolean;
   }
@@ -25,6 +27,7 @@ declare module "@auth/core/jwt" {
     id: string;
     role: Role;
     departmentId: string | null;
+    entityId: string | null;
     managerId: string | null;
     mustChangePassword: boolean;
   }

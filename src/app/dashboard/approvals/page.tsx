@@ -17,12 +17,17 @@ export default async function ApprovalsPage() {
   }
 
   // Get pending regularizations for the user's team or all
-  const where = hasPermission(role, "regularization:view-all")
-    ? { status: "PENDING" as const }
-    : {
-        status: "PENDING" as const,
-        employee: { managerId: session.user.id },
-      };
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  const userEntityId = session.user.entityId;
+
+  const where: Record<string, unknown> = { status: "PENDING" };
+  if (!hasPermission(role, "regularization:view-all")) {
+    where.employee = { managerId: session.user.id };
+  }
+  // Entity-based visibility: only SUPER_ADMIN sees all entities
+  if (!isSuperAdmin && userEntityId) {
+    where.employee = { ...(where.employee as object || {}), entityId: userEntityId };
+  }
 
   const regularizations = await prisma.regularization.findMany({
     where,

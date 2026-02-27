@@ -39,6 +39,12 @@ export async function GET(request: NextRequest) {
     if (entityId) userWhere.entityId = entityId;
     if (locationId) userWhere.locationId = locationId;
 
+    // Entity-based visibility: only SUPER_ADMIN sees all entities
+    if (role !== "SUPER_ADMIN" && session.user.entityId) {
+      // Force entity filter — override any entity selection to user's own entity
+      if (!entityId) userWhere.entityId = session.user.entityId;
+    }
+
     switch (reportType) {
       case "attendance-summary":
         return await attendanceSummaryReport(start, end, userWhere, exportFormat);

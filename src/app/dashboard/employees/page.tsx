@@ -19,9 +19,18 @@ export default async function EmployeesPage() {
 
   const canManageUsers = hasPermission(role, "users:manage");
 
-  const where = hasPermission(role, "attendance:view-all")
-    ? {}
-    : { managerId: session.user.id };
+  // Entity-based visibility: only SUPER_ADMIN sees all entities
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  const userEntityId = session.user.entityId;
+
+  const where: Record<string, unknown> = {};
+  if (!hasPermission(role, "attendance:view-all")) {
+    where.managerId = session.user.id;
+  }
+  // Apply entity filter for non-SUPER_ADMIN
+  if (!isSuperAdmin && userEntityId) {
+    where.entityId = userEntityId;
+  }
 
   const { start, end } = getDayRange(new Date());
 

@@ -55,18 +55,26 @@ export default async function AttendancePage({
       take: 7,
     }),
     canViewTeam
-      ? prisma.user.findMany({
-          where: hasPermission(role, "attendance:view-all")
-            ? { isActive: true }
-            : { managerId: currentUserId, isActive: true },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            department: { select: { name: true } },
-          },
-          orderBy: { name: "asc" },
-        })
+      ? (() => {
+          const teamWhere: Record<string, unknown> = { isActive: true };
+          if (!hasPermission(role, "attendance:view-all")) {
+            teamWhere.managerId = currentUserId;
+          }
+          // Entity-based visibility: only SUPER_ADMIN sees all entities
+          if (role !== "SUPER_ADMIN" && session.user.entityId) {
+            teamWhere.entityId = session.user.entityId;
+          }
+          return prisma.user.findMany({
+            where: teamWhere,
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              department: { select: { name: true } },
+            },
+            orderBy: { name: "asc" },
+          });
+        })()
       : Promise.resolve([]),
   ]);
 
