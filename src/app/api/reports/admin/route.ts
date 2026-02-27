@@ -5,6 +5,17 @@ import { apiResponse, apiError } from "@/lib/api-utils";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 import { formatIST } from "@/lib/datetime";
+import { eachDayOfInterval, getDay } from "date-fns";
+
+/** Count working days (Mon-Sat, excluding Sundays) in a date range */
+function countWorkingDays(start: Date, end: Date): number {
+  const now = new Date();
+  const effectiveEnd = end > now ? now : end;
+  if (effectiveEnd < start) return 0;
+  return eachDayOfInterval({ start, end: effectiveEnd }).filter(
+    (d) => getDay(d) !== 0 // exclude Sundays
+  ).length;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -79,6 +90,7 @@ async function attendanceSummaryReport(
       name: true,
       email: true,
       employeeCode: true,
+      role: true,
       department: { select: { name: true } },
       dailySummaries: {
         where: { date: { gte: start, lte: end } },
@@ -87,17 +99,24 @@ async function attendanceSummaryReport(
     orderBy: { name: "asc" },
   });
 
+  // Count working days in the range (Mon-Sat)
+  const totalWorkingDays = countWorkingDays(start, end);
+
   const data = users.map((u) => {
+    const isManagement = u.role === "MANAGEMENT";
     const summaries = u.dailySummaries;
-    const presentDays = summaries.filter(
-      (s) => s.status === "PRESENT" || s.status === "LATE"
-    ).length;
-    const absentDays = summaries.filter((s) => s.status === "ABSENT").length;
-    const lateDays = summaries.filter((s) => s.status === "LATE").length;
-    const halfDays = summaries.filter((s) => s.status === "HALF_DAY").length;
-    const onLeaveDays = summaries.filter((s) => s.status === "ON_LEAVE").length;
+    const presentDays = isManagement
+      ? totalWorkingDays
+      : summaries.filter((s) => s.status === "PRESENT" || s.status === "LATE").length;
+    const absentDays = isManagement
+      ? 0
+      : summaries.filter((s) => s.status === "ABSENT").length;
+    const lateDays = isManagement ? 0 : summaries.filter((s) => s.status === "LATE").length;
+    const halfDays = isManagement ? 0 : summaries.filter((s) => s.status === "HALF_DAY").length;
+    const onLeaveDays = isManagement ? 0 : summaries.filter((s) => s.status === "ON_LEAVE").length;
     const totalWorkMins = summaries.reduce((a, s) => a + s.totalWorkMins, 0);
     const totalOTMins = summaries.reduce((a, s) => a + s.overtimeMins, 0);
+    const effectiveTotalDays = isManagement ? totalWorkingDays : summaries.length;
 
     return {
       id: u.id,
@@ -105,14 +124,15 @@ async function attendanceSummaryReport(
       email: u.email,
       employeeCode: u.employeeCode || "-",
       department: u.department?.name || "-",
-      totalDays: summaries.length,
+      role: u.role,
+      totalDays: effectiveTotalDays,
       presentDays,
       absentDays,
       lateDays,
       halfDays,
       onLeaveDays,
       totalWorkHours: +(totalWorkMins / 60).toFixed(1),
-      avgDailyHours: summaries.length > 0 ? +(totalWorkMins / 60 / summaries.length).toFixed(1) : 0,
+      avgDailyHours: effectiveTotalDays > 0 ? +(totalWorkMins / 60 / effectiveTotalDays).toFixed(1) : 0,
       totalOTHours: +(totalOTMins / 60).toFixed(1),
     };
   });
@@ -159,6 +179,7 @@ async function dailyAttendanceReport(
       name: true,
       email: true,
       employeeCode: true,
+      role: true,
       department: { select: { name: true } },
       dailySummaries: {
         where: { date: { gte: dayStart, lte: dayEnd } },
@@ -174,6 +195,7 @@ async function dailyAttendanceReport(
   });
 
   const data = users.map((u) => {
+    const isManagement = u.role === "MANAGEMENT";
     const summary = u.dailySummaries[0];
     const sessions = u.sessions || [];
     const firstCheckInSession = sessions.find((s) => s.type === "CHECK_IN");
@@ -185,19 +207,23 @@ async function dailyAttendanceReport(
       name: u.name,
       employeeCode: u.employeeCode || "-",
       department: u.department?.name || "-",
-      status: summary?.status || "ABSENT",
-      firstCheckIn: summary?.firstCheckIn
-        ? formatIST(summary.firstCheckIn, "HH:mm")
-        : "-",
-      lastCheckOut: summary?.lastCheckOut
-        ? formatIST(summary.lastCheckOut, "HH:mm")
-        : "-",
-      checkInLocation: firstCheckInSession?.address || "-",
-      checkOutLocation: lastCheckOutSession?.address || "-",
+      status: isManagement ? "PRESENT" : (summary?.status || "ABSENT"),
+      firstCheckIn: isManagement
+        ? "Management"
+        : summary?.firstCheckIn
+          ? formatIST(summary.firstCheckIn, "HH:mm")
+          : "-",
+      lastCheckOut: isManagement
+        ? "Management"
+        : summary?.lastCheckOut
+          ? formatIST(summary.lastCheckOut, "HH:mm")
+          : "-",
+      checkInLocation: isManagement ? "-" : (firstCheckInSession?.address || "-"),
+      checkOutLocation: isManagement ? "-" : (lastCheckOutSession?.address || "-"),
       workHours: summary ? +(summary.totalWorkMins / 60).toFixed(1) : 0,
       breakHours: summary ? +(summary.totalBreakMins / 60).toFixed(1) : 0,
       sessions: summary?.sessionCount || 0,
-      isLate: summary?.status === "LATE",
+      isLate: isManagement ? false : summary?.status === "LATE",
     };
   });
 

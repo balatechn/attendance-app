@@ -28,6 +28,7 @@ interface AttendanceSummary {
   name: string;
   employeeCode: string;
   department: string;
+  role?: string;
   totalDays: number;
   presentDays: number;
   absentDays: number;
