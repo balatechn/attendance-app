@@ -127,6 +127,8 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
   const [resetEmployee, setResetEmployee] = useState<Employee | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetResult, setResetResult] = useState<{ tempPassword: string; name: string } | null>(null);
+  const [deleteEmployee, setDeleteEmployee] = useState<Employee | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
 
   const handleResetPassword = async (emp: Employee) => {
@@ -146,6 +148,24 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
       alert("Something went wrong");
     } finally {
       setResetLoading(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (emp: Employee) => {
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/employees/${emp.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setDeleteEmployee(null);
+        router.refresh();
+      } else {
+        alert(data.error?.message || "Failed to delete employee");
+      }
+    } catch {
+      alert("Something went wrong");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -422,6 +442,19 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
                               </svg>
                               Reset Password
                             </button>
+                            <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                            <button
+                              onClick={() => {
+                                setDeleteEmployee(emp);
+                                setActionMenuId(null);
+                              }}
+                              className="w-full px-3 py-2 text-left text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Delete Employee
+                            </button>
                           </div>
                         </>
                       )}
@@ -585,6 +618,42 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
                 <Button onClick={() => setResetResult(null)} className="w-full">
                   Done
                 </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Employee Confirmation Modal */}
+      {deleteEmployee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setDeleteEmployee(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm">
+            <Card>
+              <div className="text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <svg className="w-7 h-7 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Delete Employee?</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  This will permanently delete <strong>{deleteEmployee.name}</strong> and all their attendance records, leave requests, and regularizations.
+                </p>
+                <p className="text-xs text-red-500 dark:text-red-400 font-medium mb-4">
+                  This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setDeleteEmployee(null)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleDeleteEmployee(deleteEmployee)}
+                    loading={deleteLoading}
+                    className="flex-1 !bg-red-600 hover:!bg-red-700"
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             </Card>
           </div>

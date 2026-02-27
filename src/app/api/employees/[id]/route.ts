@@ -96,3 +96,63 @@ export async function PUT(
     return apiError("Failed to update employee", 500);
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) return apiError("Unauthorized", 401);
+
+    const role = session.user.role as Role;
+    if (!hasPermission(role, "users:manage")) {
+      return apiError("Forbidden", 403);
+    }
+
+    const { id } = await params;
+
+    // Prevent self-deletion
+    if (id === session.user.id) {
+      return apiError("You cannot delete your own account", 400);
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      return apiError("Employee not found", 404);
+    }
+
+    // Nullify managerId on subordinates before deleting
+    await prisma.user.updateMany({
+      where: { managerId: id },
+      data: { managerId: null },
+    });
+
+    // Nullify approver references
+    await prisma.regularization.updateMany({
+      where: { approverId: id },
+      data: { approverId: null },
+    });
+    await prisma.leaveRequest.updateMany({
+      where: { approverId: id },
+      data: { approverId: null },
+    });
+
+    // Delete related records in order
+    await prisma.notification.deleteMany({ where: { userId: id } });
+    await prisma.auditLog.deleteMany({ where: { userId: id } });
+    await prisma.leaveBalance.deleteMany({ where: { userId: id } });
+    await prisma.leaveRequest.deleteMany({ where: { userId: id } });
+    await prisma.regularization.deleteMany({ where: { employeeId: id } });
+    await prisma.dailySummary.deleteMany({ where: { userId: id } });
+    await prisma.attendanceSession.deleteMany({ where: { userId: id } });
+
+    // Delete the user
+    await prisma.user.delete({ where: { id } });
+
+    return apiResponse({ deleted: true });
+  } catch (error) {
+    console.error("Delete employee error:", error);
+    return apiError("Failed to delete employee", 500);
+  }
+}
