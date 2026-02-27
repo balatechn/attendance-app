@@ -90,6 +90,7 @@ export default async function EmployeesPage() {
           shift: e.shift ? { name: e.shift.name } : null,
           reportingTo: e.manager?.name || null,
           isActive: e.isActive,
+          geofenceEnabled: e.geofenceEnabled,
           isWorking,
           lastCheckIn: lastCheckIn?.toISOString() || null,
           todaySessions: sessionCount,

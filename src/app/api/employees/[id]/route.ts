@@ -32,6 +32,7 @@ export async function PUT(
       employeeCode,
       managerId,
       isActive,
+      geofenceEnabled,
     } = body;
 
     if (!name || !email) {
@@ -78,6 +79,7 @@ export async function PUT(
         employeeCode: employeeCode || null,
         managerId: managerId || null,
         isActive: typeof isActive === "boolean" ? isActive : existing.isActive,
+        geofenceEnabled: typeof geofenceEnabled === "boolean" ? geofenceEnabled : existing.geofenceEnabled,
       },
       include: { department: { select: { name: true } } },
     });

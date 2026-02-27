@@ -42,6 +42,7 @@ interface EmployeeData {
   managerId: string | null;
   shiftId: string | null;
   isActive: boolean;
+  geofenceEnabled: boolean;
 }
 
 interface Props {
@@ -88,6 +89,7 @@ export function EditEmployeeModal({
     managerId: employee.managerId || "",
     shiftId: employee.shiftId || "",
     isActive: employee.isActive,
+    geofenceEnabled: employee.geofenceEnabled,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -345,6 +347,28 @@ export function EditEmployeeModal({
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <div>
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Geofence Enforcement</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                  {form.geofenceEnabled ? "Location will be verified during check-in/out" : "Location check skipped for this employee"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, geofenceEnabled: !form.geofenceEnabled })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  form.geofenceEnabled ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    form.geofenceEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
             </div>
 
             {error && (

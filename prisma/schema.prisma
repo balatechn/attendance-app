@@ -52,6 +52,7 @@ model User {
   phone              String?
   employeeCode       String?  @unique
   isActive           Boolean  @default(true)
+  geofenceEnabled    Boolean  @default(true)
   mustChangePassword Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

@@ -56,7 +56,13 @@ export async function POST(request: NextRequest) {
     });
     const enforceGeofence = geofenceConfig?.value === "true";
 
-    if (enforceGeofence) {
+    // Check per-user geofence setting
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { geofenceEnabled: true },
+    });
+
+    if (enforceGeofence && currentUser?.geofenceEnabled !== false) {
       const geoFences = await prisma.geoFence.findMany({
         where: { isActive: true },
       });
