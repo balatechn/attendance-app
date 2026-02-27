@@ -95,6 +95,7 @@ export async function GET() {
             where: { isActive: true },
             select: {
               id: true,
+              role: true,
               dailySummaries: {
                 where: { date: { gte: todayStart, lte: todayEnd } },
                 select: { status: true },
@@ -108,16 +109,17 @@ export async function GET() {
     ]);
 
     // Calculate overview stats
-    const presentCount = todaySummaries.filter((s) => s.status === "PRESENT" || s.status === "LATE" || s.status === "HALF_DAY").length;
+    const managementCount = await prisma.user.count({ where: { isActive: true, role: "MANAGEMENT" } });
+    const presentCount = todaySummaries.filter((s) => s.status === "PRESENT" || s.status === "LATE" || s.status === "HALF_DAY").length + managementCount;
     const lateCount = todaySummaries.filter((s) => s.status === "LATE").length;
     const absentCount = totalEmployees - presentCount - todayLeaves;
 
     // Process location stats
     const locations = departmentStats.map((loc) => {
       const total = loc.users.length;
-      const present = loc.users.filter((u) => u.dailySummaries.length > 0 && ["PRESENT", "LATE", "HALF_DAY"].includes(u.dailySummaries[0].status)).length;
-      const late = loc.users.filter((u) => u.dailySummaries.length > 0 && u.dailySummaries[0].status === "LATE").length;
-      const onLeave = loc.users.filter((u) => u.dailySummaries.length > 0 && u.dailySummaries[0].status === "ON_LEAVE").length;
+      const present = loc.users.filter((u) => u.role === "MANAGEMENT" || (u.dailySummaries.length > 0 && ["PRESENT", "LATE", "HALF_DAY"].includes(u.dailySummaries[0].status))).length;
+      const late = loc.users.filter((u) => u.role !== "MANAGEMENT" && u.dailySummaries.length > 0 && u.dailySummaries[0].status === "LATE").length;
+      const onLeave = loc.users.filter((u) => u.role !== "MANAGEMENT" && u.dailySummaries.length > 0 && u.dailySummaries[0].status === "ON_LEAVE").length;
       const absent = total - present - onLeave;
       return { id: loc.id, name: loc.name, total, present, absent, late, onLeave };
     });

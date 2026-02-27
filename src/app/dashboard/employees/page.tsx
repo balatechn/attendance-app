@@ -50,7 +50,7 @@ export default async function EmployeesPage() {
     canManageUsers ? prisma.location.findMany({ where: { isActive: true }, select: { id: true, name: true, entityId: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.shift.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
     canManageUsers ? prisma.user.findMany({
-      where: { role: { in: ["MANAGER", "HR_ADMIN", "ADMIN", "SUPER_ADMIN"] }, isActive: true },
+      where: { role: { in: ["MANAGER", "HR_ADMIN", "MANAGEMENT", "ADMIN", "SUPER_ADMIN"] }, isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }) : Promise.resolve([]),
@@ -66,8 +66,9 @@ export default async function EmployeesPage() {
       managers={managers.map((m) => ({ id: m.id, name: m.name }))}
       employees={employees.map((e) => {
         const sessionCount = e.sessions.length;
-        const isWorking = sessionCount > 0 && sessionCount % 2 !== 0;
-        const lastCheckIn = isWorking
+        const isManagement = e.role === "MANAGEMENT";
+        const isWorking = isManagement ? true : (sessionCount > 0 && sessionCount % 2 !== 0);
+        const lastCheckIn = isWorking && !isManagement
           ? e.sessions.filter((s) => s.type === "CHECK_IN").pop()?.timestamp
           : null;
         const summary = e.dailySummaries[0] || null;

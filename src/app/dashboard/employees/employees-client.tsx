@@ -460,7 +460,15 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
                       )}
                     </div>
                   )}
-                  {emp.isWorking && emp.lastCheckIn ? (
+                  {emp.role === "MANAGEMENT" ? (
+                    <div>
+                      <p className="text-sm font-bold text-green-600 dark:text-green-400">Present</p>
+                      <p className="text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center justify-end gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        Management
+                      </p>
+                    </div>
+                  ) : emp.isWorking && emp.lastCheckIn ? (
                     <div>
                       <LiveTimer checkInTime={emp.lastCheckIn} />
                       <p className="text-[10px] text-green-600 dark:text-green-400 font-medium flex items-center justify-end gap-1">

@@ -108,9 +108,21 @@ export function DashboardClient({
       )}
 
       {/* Check In/Out section */}
-      <Card className="flex flex-col items-center py-8">
-        <CheckInOutButton onSessionChange={onSessionChange} />
-      </Card>
+      {user.role === "MANAGEMENT" ? (
+        <Card className="flex flex-col items-center py-8">
+          <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
+            <svg className="w-10 h-10 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-lg font-bold text-green-600 dark:text-green-400">Present</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Management — no check-in required</p>
+        </Card>
+      ) : (
+        <Card className="flex flex-col items-center py-8">
+          <CheckInOutButton onSessionChange={onSessionChange} />
+        </Card>
+      )}
 
       {/* Today's summary */}
       <DailySummaryWidget summary={summary} />
