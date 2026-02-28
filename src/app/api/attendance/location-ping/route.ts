@@ -30,7 +30,7 @@ export async function GET() {
 
     // Find all super admins
     const superAdmins = await prisma.user.findMany({
-      where: { role: "SUPER_ADMIN", isActive: true },
+      where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, isActive: true },
       select: { email: true, name: true },
     });
 
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
         select: { name: true, email: true },
       }),
       prisma.user.findMany({
-        where: { role: "SUPER_ADMIN", isActive: true },
+        where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, isActive: true },
         select: { email: true },
       }),
     ]);

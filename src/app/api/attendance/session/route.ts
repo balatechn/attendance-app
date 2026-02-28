@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
             if (movedDistance > thresholdM) {
               const [empInfo, superAdmins] = await Promise.all([
                 prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
-                prisma.user.findMany({ where: { role: "SUPER_ADMIN", isActive: true }, select: { email: true } }),
+                prisma.user.findMany({ where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, isActive: true }, select: { email: true } }),
               ]);
 
               if (empInfo && superAdmins.length > 0) {
