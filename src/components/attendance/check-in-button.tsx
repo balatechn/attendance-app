@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useAttendanceStore } from "@/lib/store";
 import { useLiveTimer } from "@/hooks/use-timer";
+
+const LOCATION_PING_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => void }) {
   const { isCheckedIn, checkIn, checkOut, addToOfflineQueue } = useAttendanceStore();
@@ -13,6 +15,7 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
   const [error, setError] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-retry geolocation if it fails (up to 3 times)
   useEffect(() => {
@@ -24,6 +27,51 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
       return () => clearTimeout(timer);
     }
   }, [geoError, retryCount, refresh, latitude]);
+
+  // Periodic location ping while checked in (every 5 minutes)
+  useEffect(() => {
+    if (!isCheckedIn || !latitude || !longitude) {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const sendPing = async () => {
+      try {
+        if (!navigator.onLine) return;
+        // Get fresh position for ping
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 60000,
+          });
+        });
+        await fetch("/api/attendance/location-ping", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          }),
+        });
+      } catch {
+        // Silently ignore ping failures
+      }
+    };
+
+    // Send first ping after 5 minutes, then every 5 minutes
+    pingIntervalRef.current = setInterval(sendPing, LOCATION_PING_INTERVAL);
+
+    return () => {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    };
+  }, [isCheckedIn, latitude, longitude]);
 
   const hasLocation = latitude !== null && longitude !== null;
 

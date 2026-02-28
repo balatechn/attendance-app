@@ -2,9 +2,10 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { apiResponse, apiError, checkRateLimit } from "@/lib/api-utils";
-import { isWithinGeofence } from "@/lib/geo";
+import { isWithinGeofence, haversineDistance } from "@/lib/geo";
 import { reverseGeocode } from "@/lib/geocode";
 import { getDayRange, getWorkingMinutes, getOvertimeMinutes, isLateArrival, getShiftLateThreshold } from "@/lib/datetime";
+import { sendEmail, movementAlertEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -185,6 +186,54 @@ export async function POST(request: NextRequest) {
           link: "/dashboard",
         },
       });
+    }
+
+    // Check-out movement alert: compare check-out location vs first check-in
+    if (type === "CHECK_OUT") {
+      const firstCI = allSessions.find((s) => s.type === "CHECK_IN");
+      if (firstCI) {
+        try {
+          const [alertConfig, thresholdConfig] = await Promise.all([
+            prisma.appConfig.findUnique({ where: { key: "MOVEMENT_ALERT_ENABLED" } }),
+            prisma.appConfig.findUnique({ where: { key: "MOVEMENT_ALERT_DISTANCE" } }),
+          ]);
+          const alertEnabled = alertConfig?.value !== "false";
+          const thresholdM = parseInt(thresholdConfig?.value || "500", 10);
+
+          if (alertEnabled) {
+            const movedDistance = Math.round(
+              haversineDistance(firstCI.latitude, firstCI.longitude, latitude, longitude)
+            );
+
+            if (movedDistance > thresholdM) {
+              const [empInfo, superAdmins] = await Promise.all([
+                prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+                prisma.user.findMany({ where: { role: "SUPER_ADMIN", isActive: true }, select: { email: true } }),
+              ]);
+
+              if (empInfo && superAdmins.length > 0) {
+                const ciAddr = firstCI.address || `${firstCI.latitude.toFixed(6)}, ${firstCI.longitude.toFixed(6)}`;
+                const coAddr = address || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+                const ciTime = firstCI.timestamp.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
+                const mapUrl = `https://www.google.com/maps/dir/${firstCI.latitude},${firstCI.longitude}/${latitude},${longitude}`;
+                const distStr = movedDistance >= 1000 ? `${(movedDistance / 1000).toFixed(1)}km` : `${movedDistance}m`;
+
+                const emailHtml = movementAlertEmail(empInfo.name, empInfo.email, ciTime, ciAddr, coAddr, movedDistance, mapUrl);
+                Promise.allSettled(
+                  superAdmins.map((a) =>
+                    sendEmail({ to: a.email, subject: `⚠️ Checkout Movement Alert: ${empInfo.name} moved ${distStr}`, html: emailHtml })
+                  )
+                ).then((results) => {
+                  const sent = results.filter((r) => r.status === "fulfilled").length;
+                  console.log(`Checkout movement alert for ${empInfo.name}: ${sent}/${superAdmins.length} emails (${movedDistance}m)`);
+                });
+              }
+            }
+          }
+        } catch (alertErr) {
+          console.error("Checkout movement alert error (non-blocking):", alertErr);
+        }
+      }
     }
 
     return apiResponse({

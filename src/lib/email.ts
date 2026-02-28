@@ -157,6 +157,38 @@ export function regularizationRequestEmail(
   `;
 }
 
+export function movementAlertEmail(
+  employeeName: string,
+  employeeEmail: string,
+  checkInTime: string,
+  checkInAddress: string,
+  currentAddress: string,
+  distanceMeters: number,
+  mapUrl: string
+): string {
+  const distanceStr = distanceMeters >= 1000
+    ? `${(distanceMeters / 1000).toFixed(1)} km`
+    : `${distanceMeters} m`;
+  return `
+    <h2 style="color:#dc2626;margin:0 0 16px;">⚠️ Employee Movement Alert</h2>
+    <p style="color:#475569;line-height:1.6;">
+      <strong>${employeeName}</strong> (${employeeEmail}) has moved significantly from their check-in location.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <tr><td style="padding:8px 12px;background:#fef2f2;font-weight:600;width:140px;color:#991b1b;">Distance Moved</td><td style="padding:8px 12px;font-weight:700;color:#dc2626;">${distanceStr}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">Check-In Time</td><td style="padding:8px 12px;">${checkInTime}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">Check-In Location</td><td style="padding:8px 12px;">${checkInAddress}</td></tr>
+      <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">Current Location</td><td style="padding:8px 12px;">${currentAddress}</td></tr>
+    </table>
+    <a href="${mapUrl}" style="display:inline-block;background:#dc2626;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:8px;">
+      View on Map
+    </a>
+    <p style="color:#94a3b8;font-size:12px;margin-top:16px;">
+      This alert was triggered because the employee moved more than the configured threshold from their check-in location.
+    </p>
+  `;
+}
+
 export function regularizationStatusEmail(
   status: "APPROVED" | "REJECTED",
   date: string,
