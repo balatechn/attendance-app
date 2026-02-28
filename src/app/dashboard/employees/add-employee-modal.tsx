@@ -160,11 +160,12 @@ export function AddEmployeeModal({ departments, entities, locations, shifts, man
                 required
               />
               <Input
-                label="Phone"
+                label="Phone *"
                 type="tel"
                 placeholder="+91 98765 43210"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                required
               />
               <Input
                 label="Employee Code"

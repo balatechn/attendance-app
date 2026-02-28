@@ -84,6 +84,10 @@ export async function POST(request: NextRequest) {
       return apiError("Name and email are required", 400);
     }
 
+    if (!phone || !phone.trim()) {
+      return apiError("Phone number is required", 400);
+    }
+
     // Check if email already exists
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {

@@ -145,6 +145,10 @@ export default function RegisterPage() {
       setError("Passwords do not match");
       return;
     }
+    if (!phone.trim()) {
+      setError("Phone number is required");
+      return;
+    }
 
     setLoading(true);
 
@@ -395,12 +399,13 @@ export default function RegisterPage() {
                     required
                   />
                   <Input
-                    label="Phone (optional)"
+                    label="Phone *"
                     type="tel"
                     placeholder="+91 9876543210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     autoComplete="tel"
+                    required
                   />
                   {locations.length > 0 && (
                     <Select

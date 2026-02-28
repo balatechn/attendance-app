@@ -14,6 +14,10 @@ export async function POST(request: NextRequest) {
       return apiError("All fields are required", 400);
     }
 
+    if (!phone || !phone.trim()) {
+      return apiError("Phone number is required", 400);
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
 
     // Rate limit
