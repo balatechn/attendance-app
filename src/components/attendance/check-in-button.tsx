@@ -62,15 +62,20 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
       }
     };
 
-    // Send first ping after 5 minutes, then every 5 minutes
-    pingIntervalRef.current = setInterval(sendPing, LOCATION_PING_INTERVAL);
+    // Send first ping after 1 minute, then every 5 minutes
+    const firstPingTimer = setTimeout(() => {
+      sendPing();
+      pingIntervalRef.current = setInterval(sendPing, LOCATION_PING_INTERVAL);
+    }, 60_000); // 1 minute initial delay
 
     return () => {
+      clearTimeout(firstPingTimer);
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
       }
     };
+
   }, [isCheckedIn, latitude, longitude]);
 
   const hasLocation = latitude !== null && longitude !== null;

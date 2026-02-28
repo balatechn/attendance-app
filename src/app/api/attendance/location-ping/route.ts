@@ -6,6 +6,8 @@ import { haversineDistance } from "@/lib/geo";
 import { reverseGeocode } from "@/lib/geocode";
 import { getDayRange } from "@/lib/datetime";
 import { sendEmail, movementAlertEmail } from "@/lib/email";
+import { hasPermission } from "@/lib/rbac";
+import type { Role } from "@/generated/prisma/enums";
 
 // Track which users already got an alert today to avoid spam
 const alertedToday = new Map<string, number>(); // userId -> last alert timestamp
@@ -14,6 +16,63 @@ function cleanupOldAlerts() {
   const now = Date.now();
   for (const [key, ts] of alertedToday.entries()) {
     if (now - ts > 3600_000) alertedToday.delete(key); // cleanup hourly entries
+  }
+}
+
+// GET — Test movement alert (SUPER_ADMIN only)
+export async function GET() {
+  try {
+    const session = await auth();
+    if (!session?.user) return apiError("Unauthorized", 401);
+    if (!hasPermission(session.user.role as Role, "settings:manage")) {
+      return apiError("Forbidden — only SUPER_ADMIN can test alerts", 403);
+    }
+
+    // Find all super admins
+    const superAdmins = await prisma.user.findMany({
+      where: { role: "SUPER_ADMIN", isActive: true },
+      select: { email: true, name: true },
+    });
+
+    if (superAdmins.length === 0) {
+      return apiError("No active SUPER_ADMIN users found in database", 404);
+    }
+
+    const testEmailHtml = movementAlertEmail(
+      "Test Employee",
+      "test@example.com",
+      "09:15 AM",
+      "Office Location, Sector 62, Noida",
+      "Connaught Place, New Delhi",
+      1250,
+      "https://www.google.com/maps/dir/28.627235,77.376894/28.632735,77.219431"
+    );
+
+    const results = await Promise.allSettled(
+      superAdmins.map((admin) =>
+        sendEmail({
+          to: admin.email,
+          subject: `\u26a0\ufe0f TEST Movement Alert — Ignore this test email`,
+          html: testEmailHtml,
+        })
+      )
+    );
+
+    const details = results.map((r, i) => ({
+      email: superAdmins[i].email,
+      success: r.status === "fulfilled" && (r.value as { success: boolean }).success,
+      error: r.status === "rejected" ? String(r.reason) : (r.status === "fulfilled" && !(r.value as { success: boolean }).success ? JSON.stringify((r.value as { error?: unknown }).error) : null),
+    }));
+
+    console.log("Test movement alert results:", JSON.stringify(details));
+
+    return apiResponse({
+      message: "Test alert sent",
+      recipients: details,
+    });
+  } catch (error) {
+    console.error("Test movement alert error:", error);
+    return apiError("Internal server error", 500);
   }
 }
 
@@ -105,6 +164,7 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!employee || superAdmins.length === 0) {
+      console.log(`Movement alert skipped: employee=${!!employee}, superAdmins=${superAdmins.length}`);
       return apiResponse({ status: "alert_skipped", distance });
     }
 
