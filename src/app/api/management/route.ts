@@ -3,10 +3,10 @@ import prisma from "@/lib/prisma";
 import { apiResponse, apiError } from "@/lib/api-utils";
 import { isManagerOrAbove } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
-import { startOfDay, endOfDay, subDays } from "date-fns";
+import { startOfDay, endOfDay, subDays, parseISO, eachDayOfInterval } from "date-fns";
 import { formatIST } from "@/lib/datetime";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await auth();
     if (!session?.user) return apiError("Unauthorized", 401);
@@ -16,42 +16,49 @@ export async function GET() {
       return apiError("Forbidden", 403);
     }
 
-    const now = new Date();
-    const todayStart = startOfDay(now);
-    const todayEnd = endOfDay(now);
+    const { searchParams } = new URL(request.url);
+    const startParam = searchParams.get("start");
+    const endParam = searchParams.get("end");
 
-    // Entity-based visibility: only SUPER_ADMIN sees all entities
+    const now = new Date();
+    const rangeStart = startParam ? startOfDay(parseISO(startParam)) : startOfDay(now);
+    const rangeEnd = endParam ? endOfDay(parseISO(endParam)) : endOfDay(now);
+    const isToday = !startParam && !endParam;
+
+    // Entity-based visibility
     const isSuperAdmin = role === "SUPER_ADMIN";
     const userEntityId = session.user.entityId;
     const entityFilter: Record<string, unknown> = (!isSuperAdmin && userEntityId) ? { entityId: userEntityId } : {};
+    const locationEntityFilter: Record<string, unknown> = (!isSuperAdmin && userEntityId) ? { entityId: userEntityId } : {};
     const userEntityFilter: Record<string, unknown> = { isActive: true, ...entityFilter };
 
     // Run all queries in parallel
     const [
       totalEmployees,
-      todaySummaries,
-      todayLeaves,
+      rangeSummaries,
+      rangeLeaves,
       pendingRegularizations,
       pendingLeaves,
       recentSessions,
-      weeklyData,
-      departmentStats,
+      locationData,
+      departmentData,
+      allEmployees,
     ] = await Promise.all([
       // Total active employees
       prisma.user.count({ where: userEntityFilter }),
 
-      // Today's daily summaries
+      // Daily summaries for the date range
       prisma.dailySummary.findMany({
-        where: { date: { gte: todayStart, lte: todayEnd }, user: entityFilter },
-        select: { status: true },
+        where: { date: { gte: rangeStart, lte: rangeEnd }, user: entityFilter },
+        select: { status: true, userId: true, date: true, firstCheckIn: true, lastCheckOut: true, totalWorkMins: true },
       }),
 
-      // Approved leaves for today
+      // Approved leaves overlapping the range
       prisma.leaveRequest.count({
         where: {
           status: "APPROVED",
-          startDate: { lte: todayEnd },
-          endDate: { gte: todayStart },
+          startDate: { lte: rangeEnd },
+          endDate: { gte: rangeStart },
           user: entityFilter,
         },
       }),
@@ -62,39 +69,23 @@ export async function GET() {
       // Pending leave requests
       prisma.leaveRequest.count({ where: { status: "PENDING", user: entityFilter } }),
 
-      // Recent check-ins/check-outs (last 10)
+      // Recent activity — always from today for live feed
       prisma.attendanceSession.findMany({
-        where: { timestamp: { gte: todayStart }, user: entityFilter },
+        where: { timestamp: { gte: startOfDay(now) }, user: entityFilter },
         orderBy: { timestamp: "desc" },
-        take: 10,
+        take: 30,
         select: {
           id: true,
           type: true,
           timestamp: true,
           address: true,
-          user: { select: { name: true, department: { select: { name: true } } } },
+          user: { select: { name: true, department: { select: { name: true } }, location: { select: { name: true } } } },
         },
       }),
 
-      // Weekly attendance trend (last 7 days)
-      Promise.all(
-        Array.from({ length: 7 }, (_, i) => {
-          const date = subDays(now, 6 - i);
-          const dayStart = startOfDay(date);
-          const dayEnd = endOfDay(date);
-          return prisma.dailySummary
-            .count({ where: { date: { gte: dayStart, lte: dayEnd }, user: entityFilter } })
-            .then((count) => ({
-              date: formatIST(date, "EEE"),
-              fullDate: formatIST(date, "MMM dd"),
-              present: count,
-            }));
-        })
-      ),
-
-      // Location-wise stats for today
+      // Location-wise with employee details for drilldown
       prisma.location.findMany({
-        where: { isActive: true, ...( (!isSuperAdmin && userEntityId) ? { entityId: userEntityId } : {}) },
+        where: { isActive: true, ...locationEntityFilter },
         select: {
           id: true,
           name: true,
@@ -102,13 +93,58 @@ export async function GET() {
             where: { isActive: true },
             select: {
               id: true,
+              name: true,
               role: true,
+              employeeCode: true,
+              department: { select: { name: true } },
               dailySummaries: {
-                where: { date: { gte: todayStart, lte: todayEnd } },
-                select: { status: true },
-                take: 1,
+                where: { date: { gte: rangeStart, lte: rangeEnd } },
+                select: { status: true, firstCheckIn: true, lastCheckOut: true, totalWorkMins: true, date: true },
               },
             },
+          },
+        },
+        orderBy: { name: "asc" },
+      }),
+
+      // Department-wise with employee details for drilldown
+      prisma.department.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          users: {
+            where: userEntityFilter,
+            select: {
+              id: true,
+              name: true,
+              role: true,
+              employeeCode: true,
+              location: { select: { name: true } },
+              dailySummaries: {
+                where: { date: { gte: rangeStart, lte: rangeEnd } },
+                select: { status: true, firstCheckIn: true, lastCheckOut: true, totalWorkMins: true, date: true },
+              },
+            },
+          },
+        },
+        orderBy: { name: "asc" },
+      }),
+
+      // All employees for employee drilldown tab
+      prisma.user.findMany({
+        where: userEntityFilter,
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          employeeCode: true,
+          department: { select: { name: true } },
+          location: { select: { name: true } },
+          dailySummaries: {
+            where: { date: { gte: rangeStart, lte: rangeEnd } },
+            select: { status: true, firstCheckIn: true, lastCheckOut: true, totalWorkMins: true, date: true },
+            orderBy: { date: "desc" },
           },
         },
         orderBy: { name: "asc" },
@@ -117,18 +153,124 @@ export async function GET() {
 
     // Calculate overview stats
     const managementCount = await prisma.user.count({ where: { ...userEntityFilter, role: "MANAGEMENT" } });
-    const presentCount = todaySummaries.filter((s) => s.status === "PRESENT" || s.status === "LATE" || s.status === "HALF_DAY").length + managementCount;
-    const lateCount = todaySummaries.filter((s) => s.status === "LATE").length;
-    const absentCount = totalEmployees - presentCount - todayLeaves;
 
-    // Process location stats
-    const locations = departmentStats.map((loc) => {
+    // For single-day range, use direct counts. For multi-day, average.
+    const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+    const numDays = days.length;
+
+    const presentSummaries = rangeSummaries.filter((s) => s.status === "PRESENT" || s.status === "LATE" || s.status === "HALF_DAY");
+    const lateSummaries = rangeSummaries.filter((s) => s.status === "LATE");
+    const onLeaveSummaries = rangeSummaries.filter((s) => s.status === "ON_LEAVE");
+
+    const presentCount = numDays === 1
+      ? presentSummaries.length + managementCount
+      : Math.round(presentSummaries.length / numDays) + managementCount;
+    const lateCount = numDays === 1 ? lateSummaries.length : Math.round(lateSummaries.length / numDays);
+    const onLeaveCount = numDays === 1 ? rangeLeaves : Math.round(rangeLeaves / numDays);
+    const absentCount = Math.max(0, totalEmployees - presentCount - onLeaveCount);
+
+    // Weekly trend (last 7 days from rangeEnd)
+    const weeklyTrend = await Promise.all(
+      Array.from({ length: 7 }, (_, i) => {
+        const date = subDays(rangeEnd, 6 - i);
+        const dayStart = startOfDay(date);
+        const dayEnd = endOfDay(date);
+        return prisma.dailySummary
+          .count({ where: { date: { gte: dayStart, lte: dayEnd }, user: entityFilter } })
+          .then((count) => ({
+            date: formatIST(date, "EEE"),
+            fullDate: formatIST(date, "MMM dd"),
+            present: count,
+          }));
+      })
+    );
+
+    // Helper: compute status for an employee
+    const employeeStatus = (user: { role: string; dailySummaries: { status: string; firstCheckIn: Date | null; lastCheckOut: Date | null; totalWorkMins: number | null; date: Date }[] }) => {
+      if (user.role === "MANAGEMENT") return "PRESENT";
+      if (user.dailySummaries.length === 0) return "ABSENT";
+      // For single day, use the day's status. For range, pick the most recent or summarize.
+      const latest = user.dailySummaries[0];
+      return latest.status;
+    };
+
+    // Process location stats with employee details
+    const locations = locationData.map((loc) => {
       const total = loc.users.length;
-      const present = loc.users.filter((u) => u.role === "MANAGEMENT" || (u.dailySummaries.length > 0 && ["PRESENT", "LATE", "HALF_DAY"].includes(u.dailySummaries[0].status))).length;
-      const late = loc.users.filter((u) => u.role !== "MANAGEMENT" && u.dailySummaries.length > 0 && u.dailySummaries[0].status === "LATE").length;
-      const onLeave = loc.users.filter((u) => u.role !== "MANAGEMENT" && u.dailySummaries.length > 0 && u.dailySummaries[0].status === "ON_LEAVE").length;
+      const employees = loc.users.map((u) => {
+        const status = employeeStatus(u);
+        const latestSummary = u.dailySummaries[0];
+        return {
+          id: u.id,
+          name: u.name,
+          employeeCode: u.employeeCode,
+          department: u.department?.name || "—",
+          role: u.role,
+          status,
+          checkIn: latestSummary?.firstCheckIn ? formatIST(new Date(latestSummary.firstCheckIn), "hh:mm a") : null,
+          checkOut: latestSummary?.lastCheckOut ? formatIST(new Date(latestSummary.lastCheckOut), "hh:mm a") : null,
+          workMins: latestSummary?.totalWorkMins || 0,
+          presentDays: u.dailySummaries.filter((s) => ["PRESENT", "LATE", "HALF_DAY"].includes(s.status)).length,
+          absentDays: numDays - u.dailySummaries.filter((s) => ["PRESENT", "LATE", "HALF_DAY", "ON_LEAVE"].includes(s.status)).length - (u.role === "MANAGEMENT" ? 0 : 0),
+        };
+      });
+
+      const present = employees.filter((e) => ["PRESENT", "LATE", "HALF_DAY"].includes(e.status)).length;
+      const late = employees.filter((e) => e.status === "LATE").length;
+      const onLeave = employees.filter((e) => e.status === "ON_LEAVE").length;
       const absent = total - present - onLeave;
-      return { id: loc.id, name: loc.name, total, present, absent, late, onLeave };
+
+      return { id: loc.id, name: loc.name, total, present, absent: Math.max(0, absent), late, onLeave, employees };
+    });
+
+    // Process department stats with employee details
+    const departments = departmentData.map((dept) => {
+      const total = dept.users.length;
+      const employees = dept.users.map((u) => {
+        const status = employeeStatus(u);
+        const latestSummary = u.dailySummaries[0];
+        return {
+          id: u.id,
+          name: u.name,
+          employeeCode: u.employeeCode,
+          location: u.location?.name || "—",
+          role: u.role,
+          status,
+          checkIn: latestSummary?.firstCheckIn ? formatIST(new Date(latestSummary.firstCheckIn), "hh:mm a") : null,
+          checkOut: latestSummary?.lastCheckOut ? formatIST(new Date(latestSummary.lastCheckOut), "hh:mm a") : null,
+          workMins: latestSummary?.totalWorkMins || 0,
+          presentDays: u.dailySummaries.filter((s) => ["PRESENT", "LATE", "HALF_DAY"].includes(s.status)).length,
+        };
+      });
+
+      const present = employees.filter((e) => ["PRESENT", "LATE", "HALF_DAY"].includes(e.status)).length;
+      const late = employees.filter((e) => e.status === "LATE").length;
+      const onLeave = employees.filter((e) => e.status === "ON_LEAVE").length;
+      const absent = total - present - onLeave;
+
+      return { id: dept.id, name: dept.name, total, present, absent: Math.max(0, absent), late, onLeave, employees };
+    }).filter((d) => d.total > 0);
+
+    // All employees for drilldown tab
+    const employees = allEmployees.map((u) => {
+      const status = employeeStatus(u);
+      const latestSummary = u.dailySummaries[0];
+      return {
+        id: u.id,
+        name: u.name,
+        employeeCode: u.employeeCode,
+        department: u.department?.name || "—",
+        location: u.location?.name || "—",
+        role: u.role,
+        status,
+        checkIn: latestSummary?.firstCheckIn ? formatIST(new Date(latestSummary.firstCheckIn), "hh:mm a") : null,
+        checkOut: latestSummary?.lastCheckOut ? formatIST(new Date(latestSummary.lastCheckOut), "hh:mm a") : null,
+        workMins: latestSummary?.totalWorkMins || 0,
+        presentDays: u.dailySummaries.filter((s) => ["PRESENT", "LATE", "HALF_DAY"].includes(s.status)).length,
+        absentDays: numDays - u.dailySummaries.filter((s) => ["PRESENT", "LATE", "HALF_DAY", "ON_LEAVE"].includes(s.status)).length,
+        lateDays: u.dailySummaries.filter((s) => s.status === "LATE").length,
+        leaveDays: u.dailySummaries.filter((s) => s.status === "ON_LEAVE").length,
+      };
     });
 
     // Format recent activity
@@ -137,6 +279,7 @@ export async function GET() {
       type: s.type,
       employeeName: s.user.name,
       department: s.user.department?.name || "—",
+      location: s.user.location?.name || "—",
       time: formatIST(new Date(s.timestamp), "hh:mm a"),
       address: s.address || null,
     }));
@@ -145,14 +288,23 @@ export async function GET() {
       overview: {
         totalEmployees,
         presentToday: presentCount,
-        absentToday: absentCount < 0 ? 0 : absentCount,
-        onLeaveToday: todayLeaves,
+        absentToday: absentCount,
+        onLeaveToday: onLeaveCount,
         lateArrivals: lateCount,
         pendingApprovals: pendingRegularizations + pendingLeaves,
+        halfDay: numDays === 1 ? rangeSummaries.filter((s) => s.status === "HALF_DAY").length : Math.round(rangeSummaries.filter((s) => s.status === "HALF_DAY").length / numDays),
       },
       locations,
+      departments,
+      employees,
       recentActivity,
-      weeklyTrend: weeklyData,
+      weeklyTrend,
+      meta: {
+        rangeStart: rangeStart.toISOString(),
+        rangeEnd: rangeEnd.toISOString(),
+        numDays,
+        isToday,
+      },
     });
   } catch (error) {
     console.error("Management dashboard error:", error);
