@@ -135,7 +135,6 @@ function statusBadge(status: string) {
     LATE: { variant: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400", label: "Late" },
     ON_LEAVE: { variant: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400", label: "On Leave" },
     HALF_DAY: { variant: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400", label: "Half Day" },
-    MANAGEMENT: { variant: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400", label: "Mgmt" },
   };
   const s = map[status] || { variant: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400", label: status };
   return <Badge className={s.variant}>{s.label}</Badge>;

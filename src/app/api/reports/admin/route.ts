@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     // Set end to end of day
     end.setHours(23, 59, 59, 999);
 
-    const userWhere: Record<string, unknown> = { isActive: true };
+    const userWhere: Record<string, unknown> = { isActive: true, role: { not: "MANAGEMENT" } };
     if (departmentId) userWhere.departmentId = departmentId;
     if (entityId) userWhere.entityId = entityId;
     if (locationId) userWhere.locationId = locationId;
@@ -103,20 +103,15 @@ async function attendanceSummaryReport(
   const totalWorkingDays = countWorkingDays(start, end);
 
   const data = users.map((u) => {
-    const isManagement = u.role === "MANAGEMENT";
     const summaries = u.dailySummaries;
-    const presentDays = isManagement
-      ? totalWorkingDays
-      : summaries.filter((s) => s.status === "PRESENT" || s.status === "LATE").length;
-    const absentDays = isManagement
-      ? 0
-      : summaries.filter((s) => s.status === "ABSENT").length;
-    const lateDays = isManagement ? 0 : summaries.filter((s) => s.status === "LATE").length;
-    const halfDays = isManagement ? 0 : summaries.filter((s) => s.status === "HALF_DAY").length;
-    const onLeaveDays = isManagement ? 0 : summaries.filter((s) => s.status === "ON_LEAVE").length;
+    const presentDays = summaries.filter((s) => s.status === "PRESENT" || s.status === "LATE").length;
+    const absentDays = summaries.filter((s) => s.status === "ABSENT").length;
+    const lateDays = summaries.filter((s) => s.status === "LATE").length;
+    const halfDays = summaries.filter((s) => s.status === "HALF_DAY").length;
+    const onLeaveDays = summaries.filter((s) => s.status === "ON_LEAVE").length;
     const totalWorkMins = summaries.reduce((a, s) => a + s.totalWorkMins, 0);
     const totalOTMins = summaries.reduce((a, s) => a + s.overtimeMins, 0);
-    const effectiveTotalDays = isManagement ? totalWorkingDays : summaries.length;
+    const effectiveTotalDays = summaries.length;
 
     return {
       id: u.id,
@@ -195,7 +190,6 @@ async function dailyAttendanceReport(
   });
 
   const data = users.map((u) => {
-    const isManagement = u.role === "MANAGEMENT";
     const summary = u.dailySummaries[0];
     const sessions = u.sessions || [];
     const firstCheckInSession = sessions.find((s) => s.type === "CHECK_IN");
@@ -207,23 +201,19 @@ async function dailyAttendanceReport(
       name: u.name,
       employeeCode: u.employeeCode || "-",
       department: u.department?.name || "-",
-      status: isManagement ? "PRESENT" : (summary?.status || "ABSENT"),
-      firstCheckIn: isManagement
-        ? "Management"
-        : summary?.firstCheckIn
-          ? formatIST(summary.firstCheckIn, "HH:mm")
-          : "-",
-      lastCheckOut: isManagement
-        ? "Management"
-        : summary?.lastCheckOut
-          ? formatIST(summary.lastCheckOut, "HH:mm")
-          : "-",
-      checkInLocation: isManagement ? "-" : (firstCheckInSession?.address || "-"),
-      checkOutLocation: isManagement ? "-" : (lastCheckOutSession?.address || "-"),
+      status: summary?.status || "ABSENT",
+      firstCheckIn: summary?.firstCheckIn
+        ? formatIST(summary.firstCheckIn, "HH:mm")
+        : "-",
+      lastCheckOut: summary?.lastCheckOut
+        ? formatIST(summary.lastCheckOut, "HH:mm")
+        : "-",
+      checkInLocation: firstCheckInSession?.address || "-",
+      checkOutLocation: lastCheckOutSession?.address || "-",
       workHours: summary ? +(summary.totalWorkMins / 60).toFixed(1) : 0,
       breakHours: summary ? +(summary.totalBreakMins / 60).toFixed(1) : 0,
       sessions: summary?.sessionCount || 0,
-      isLate: isManagement ? false : summary?.status === "LATE",
+      isLate: summary?.status === "LATE",
     };
   });
 

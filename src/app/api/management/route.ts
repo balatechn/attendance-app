@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const userEntityId = session.user.entityId;
     const entityFilter: Record<string, unknown> = (!isSuperAdmin && userEntityId) ? { entityId: userEntityId } : {};
     const locationEntityFilter: Record<string, unknown> = (!isSuperAdmin && userEntityId) ? { entityId: userEntityId } : {};
-    const userEntityFilter: Record<string, unknown> = { isActive: true, ...entityFilter };
+    const userEntityFilter: Record<string, unknown> = { isActive: true, role: { not: "MANAGEMENT" }, ...entityFilter };
 
     // Run all queries in parallel
     const [
@@ -151,8 +151,7 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    // Calculate overview stats
-    const managementCount = await prisma.user.count({ where: { ...userEntityFilter, role: "MANAGEMENT" } });
+    // Calculate overview stats — MANAGEMENT role excluded via userEntityFilter
 
     // For single-day range, use direct counts. For multi-day, average.
     const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd });
@@ -163,8 +162,8 @@ export async function GET(request: Request) {
     const onLeaveSummaries = rangeSummaries.filter((s) => s.status === "ON_LEAVE");
 
     const presentCount = numDays === 1
-      ? presentSummaries.length + managementCount
-      : Math.round(presentSummaries.length / numDays) + managementCount;
+      ? presentSummaries.length
+      : Math.round(presentSummaries.length / numDays);
     const lateCount = numDays === 1 ? lateSummaries.length : Math.round(lateSummaries.length / numDays);
     const onLeaveCount = numDays === 1 ? rangeLeaves : Math.round(rangeLeaves / numDays);
     const absentCount = Math.max(0, totalEmployees - presentCount - onLeaveCount);
@@ -187,7 +186,6 @@ export async function GET(request: Request) {
 
     // Helper: compute status for an employee
     const employeeStatus = (user: { role: string; dailySummaries: { status: string; firstCheckIn: Date | null; lastCheckOut: Date | null; totalWorkMins: number | null; date: Date }[] }) => {
-      if (user.role === "MANAGEMENT") return "PRESENT";
       if (user.dailySummaries.length === 0) return "ABSENT";
       // For single day, use the day's status. For range, pick the most recent or summarize.
       const latest = user.dailySummaries[0];
