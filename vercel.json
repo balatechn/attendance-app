@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/daily-summary",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/leave-reset",
+      "schedule": "30 18 1 1 *"
     }
   ]
 }

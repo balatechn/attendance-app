@@ -12,6 +12,10 @@ interface LeaveType {
   isFixed: boolean;
   defaultDays: number;
   accrualPerMonth: number | null;
+  minAdvanceNoticeDays: number | null;
+  certRequiredAfterDays: number | null;
+  maxExpiryDays: number | null;
+  carryForward: boolean;
 }
 
 interface LeaveRequest {
@@ -79,7 +83,14 @@ export function LeavesClient({ currentUserId, canApprove, leaveTypes, requests, 
     startDate: "",
     endDate: "",
     reason: "",
+    certNote: "",
   });
+
+  const selectedLeaveType = leaveTypes.find((lt) => lt.id === form.leaveTypeId);
+  const formDays = form.startDate && form.endDate
+    ? Math.max(1, Math.ceil((new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1)
+    : 0;
+  const needsCertNote = selectedLeaveType?.certRequiredAfterDays != null && formDays > selectedLeaveType.certRequiredAfterDays;
 
   const myRequests = requests.filter((r) => r.userId === currentUserId);
   const teamRequests = requests.filter((r) => r.userId !== currentUserId);
@@ -102,7 +113,7 @@ export function LeavesClient({ currentUserId, canApprove, leaveTypes, requests, 
         return;
       }
       setSuccess("Leave request submitted! Your manager has been notified.");
-      setForm({ leaveTypeId: leaveTypes[0]?.id || "", startDate: "", endDate: "", reason: "" });
+      setForm({ leaveTypeId: leaveTypes[0]?.id || "", startDate: "", endDate: "", reason: "", certNote: "" });
       setTimeout(() => {
         setShowApplyForm(false);
         setSuccess("");
@@ -232,6 +243,49 @@ export function LeavesClient({ currentUserId, canApprove, leaveTypes, requests, 
                 className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 resize-none"
               />
             </div>
+
+            {/* Medical certificate note (shown when SL > certRequiredAfterDays) */}
+            {needsCertNote && (
+              <div>
+                <label className="block text-xs font-medium text-amber-600 dark:text-amber-400 mb-1">
+                  Medical Certificate Note * (required for {selectedLeaveType?.name} &gt; {selectedLeaveType?.certRequiredAfterDays} days)
+                </label>
+                <textarea
+                  value={form.certNote}
+                  onChange={(e) => setForm({ ...form, certNote: e.target.value })}
+                  rows={2}
+                  required
+                  placeholder="Provide medical certificate reference, doctor name, or details..."
+                  className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-sm text-gray-700 dark:text-gray-300 resize-none"
+                />
+              </div>
+            )}
+
+            {/* Policy hints */}
+            {selectedLeaveType && (
+              <div className="flex flex-wrap gap-2">
+                {selectedLeaveType.minAdvanceNoticeDays != null && selectedLeaveType.minAdvanceNoticeDays > 0 && (
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                    Min {selectedLeaveType.minAdvanceNoticeDays} days advance notice
+                  </span>
+                )}
+                {selectedLeaveType.certRequiredAfterDays != null && (
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">
+                    Medical cert if &gt; {selectedLeaveType.certRequiredAfterDays} days
+                  </span>
+                )}
+                {selectedLeaveType.maxExpiryDays != null && (
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+                    Must use within {selectedLeaveType.maxExpiryDays} days
+                  </span>
+                )}
+                {!selectedLeaveType.carryForward && (
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                    No carry forward
+                  </span>
+                )}
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm px-3 py-2 rounded-lg">

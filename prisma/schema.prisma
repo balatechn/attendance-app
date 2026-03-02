@@ -250,18 +250,23 @@ model Location {
 }
 
 model LeaveType {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  code            String   @unique
-  isFixed         Boolean  @default(true)
-  defaultDays     Float    @default(0)
-  accrualPerMonth Float?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  name                  String   @unique
+  code                  String   @unique
+  isFixed               Boolean  @default(true)
+  defaultDays           Float    @default(0)
+  accrualPerMonth       Float?
+  minAdvanceNoticeDays  Int?     // min days before start date (CL=3, SL=0)
+  certRequiredAfterDays Int?     // medical cert required if leave > N days (SL=2)
+  maxExpiryDays         Int?     // comp off must be used within N days of earning
+  carryForward          Boolean  @default(false)
+  maxCarryForwardDays   Float    @default(0)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  balances        LeaveBalance[]
-  requests        LeaveRequest[]
+  balances              LeaveBalance[]
+  requests              LeaveRequest[]
 }
 
 model LeaveBalance {
@@ -290,6 +295,7 @@ model LeaveRequest {
   endDate      DateTime    @db.Date
   days         Float
   reason       String
+  certNote     String?     // medical certificate note / reference
   status       LeaveStatus @default(PENDING)
   approverId   String?
   reviewNote   String?

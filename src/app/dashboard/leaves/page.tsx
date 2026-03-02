@@ -75,6 +75,10 @@ export default async function LeavesPage() {
         isFixed: lt.isFixed,
         defaultDays: lt.defaultDays,
         accrualPerMonth: lt.accrualPerMonth,
+        minAdvanceNoticeDays: lt.minAdvanceNoticeDays,
+        certRequiredAfterDays: lt.certRequiredAfterDays,
+        maxExpiryDays: lt.maxExpiryDays,
+        carryForward: lt.carryForward,
       }))}
       requests={requests.map((r) => ({
         id: r.id,

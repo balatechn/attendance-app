@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       return apiError("Too many requests", 429);
     }
 
-    const { leaveTypeId, startDate, endDate, reason } = await request.json();
+    const { leaveTypeId, startDate, endDate, reason, certNote } = await request.json();
 
     if (!leaveTypeId || !startDate || !endDate || !reason) {
       return apiError("Leave type, dates, and reason are required");
@@ -97,17 +97,75 @@ export async function POST(request: NextRequest) {
       return apiError("Invalid leave type");
     }
 
+    // ── Policy: Advance notice check ──
+    if (leaveType.minAdvanceNoticeDays && leaveType.minAdvanceNoticeDays > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const noticeDays = differenceInCalendarDays(start, today);
+      if (noticeDays < leaveType.minAdvanceNoticeDays) {
+        return apiError(
+          `${leaveType.name} requires at least ${leaveType.minAdvanceNoticeDays} days advance notice. You are applying ${noticeDays} day(s) before.`
+        );
+      }
+    }
+
+    // ── Policy: Medical certificate note for SL > N days ──
+    if (leaveType.certRequiredAfterDays && days > leaveType.certRequiredAfterDays) {
+      if (!certNote || !certNote.trim()) {
+        return apiError(
+          `${leaveType.name} for more than ${leaveType.certRequiredAfterDays} days requires a medical certificate note. Please provide certificate details.`
+        );
+      }
+    }
+
+    // ── Policy: Comp Off expiry check ──
+    if (leaveType.maxExpiryDays && leaveType.maxExpiryDays > 0) {
+      // For comp off, check that balance was allocated within the expiry window
+      // The start date of the leave must be within maxExpiryDays from when the comp off was earned
+      // Since we don't track earn date separately, we check if the leave start is reasonable
+      const today = new Date();
+      const maxStartDate = new Date(today);
+      maxStartDate.setDate(maxStartDate.getDate() + leaveType.maxExpiryDays);
+      if (start > maxStartDate) {
+        return apiError(
+          `${leaveType.name} must be used within ${leaveType.maxExpiryDays} days. Please apply for a date within the allowed window.`
+        );
+      }
+    }
+
     // Check balance
     const year = start.getFullYear();
     let balance = await prisma.leaveBalance.findFirst({
       where: { userId: session.user.id, leaveTypeId, year },
     });
 
-    // Auto-create balance if not exists
+    // Auto-create balance if not exists (with pro-rata for new joinees)
     if (!balance) {
-      const allocated = leaveType.isFixed
-        ? leaveType.defaultDays
-        : (leaveType.accrualPerMonth || 0) * new Date().getMonth(); // months elapsed
+      let allocated = 0;
+
+      if (leaveType.isFixed) {
+        // Pro-rata calculation based on join date
+        const employee = await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { createdAt: true },
+        });
+
+        const joinDate = employee?.createdAt || new Date();
+        const joinYear = joinDate.getFullYear();
+
+        if (joinYear === year) {
+          // New joinee this year: pro-rata from join month to Dec
+          const joinMonth = joinDate.getMonth(); // 0-indexed (0 = Jan)
+          const remainingMonths = 12 - joinMonth;
+          allocated = Math.round((leaveType.defaultDays * remainingMonths / 12) * 2) / 2; // round to nearest 0.5
+        } else {
+          // Full allocation for employees who joined in previous years
+          allocated = leaveType.defaultDays;
+        }
+      } else {
+        // Accrual-based (e.g., comp off) — starts at 0, admin grants manually
+        allocated = 0;
+      }
 
       balance = await prisma.leaveBalance.create({
         data: {
@@ -149,6 +207,7 @@ export async function POST(request: NextRequest) {
         endDate: end,
         days,
         reason,
+        certNote: certNote?.trim() || null,
       },
     });
 
