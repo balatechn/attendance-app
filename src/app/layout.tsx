@@ -56,6 +56,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+        {/* Sync dark class from persisted store before paint to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('ui-store')||'{}');if(s&&s.state&&s.state.isDarkMode){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){}})()`
+          }}
+        />
       </head>
       <body className="font-sans antialiased bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white min-h-screen">
         {children}

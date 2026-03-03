@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
+/* Use class-based dark mode so the toggle works */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f9fafb;
   --foreground: #111827;
+}
+
+.dark {
+  --background: #030712;
+  --foreground: #f9fafb;
 }
 
 @theme inline {
@@ -23,13 +31,6 @@
   --color-blue-800: #63492d;
   --color-blue-900: #4a3621;
   --color-blue-950: #362311;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #030712;
-    --foreground: #f9fafb;
-  }
 }
 
 body {
