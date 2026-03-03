@@ -2,8 +2,9 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { Card, Button, Badge } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { formatDate } from "@/lib/datetime";
+import { ProfileClient } from "./profile-client";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +12,17 @@ export default async function ProfilePage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { department: true },
-  });
+  const [user, locations] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { department: true, location: true },
+    }),
+    prisma.location.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (!user) redirect("/login");
 
@@ -24,47 +32,22 @@ export default async function ProfilePage() {
         Profile
       </h2>
 
-      <Card>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-2xl">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {user.name}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
-            <Badge className="mt-1">{user.role.replace("_", " ")}</Badge>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-800">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Department</span>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
-              {user.department?.name || "—"}
-            </span>
-          </div>
-          <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-800">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Phone</span>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
-              {user.phone || "—"}
-            </span>
-          </div>
-          <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-800">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Status</span>
-            <Badge variant={user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
-              {user.isActive ? "Active" : "Inactive"}
-            </Badge>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Member since</span>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
-              {formatDate(user.createdAt)}
-            </span>
-          </div>
-        </div>
-      </Card>
+      <ProfileClient
+        user={{
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          phone: user.phone,
+          designation: user.designation,
+          departmentName: user.department?.name || null,
+          locationId: user.locationId,
+          locationName: user.location?.name || null,
+          isActive: user.isActive,
+          memberSince: formatDate(user.createdAt),
+        }}
+        locations={locations}
+      />
 
       <form
         action={async () => {
