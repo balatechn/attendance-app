@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { type, latitude, longitude, deviceInfo } = body;
+    const { type, latitude, longitude, deviceInfo, note } = body;
 
     // Validate input
     if (!type || !["CHECK_IN", "CHECK_OUT"].includes(type)) {
@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
         latitude,
         longitude,
         address,
+        note: note?.trim() || null,
         deviceInfo: deviceInfo || null,
         timestamp: new Date(),
       },

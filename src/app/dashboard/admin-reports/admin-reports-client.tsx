@@ -50,6 +50,8 @@ interface DailyAttendance {
   lastCheckOut: string;
   checkInLocation: string;
   checkOutLocation: string;
+  checkInNote: string;
+  checkOutNote: string;
   workHours: number;
   breakHours: number;
   sessions: number;
@@ -782,6 +784,9 @@ function DailyAttendanceTable({ data }: { data: DailyAttendance[] }) {
               <th className="text-left px-3 py-3 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">
                 Location
               </th>
+              <th className="text-left px-3 py-3 font-semibold text-gray-600 dark:text-gray-300 hidden xl:table-cell">
+                Notes
+              </th>
               <th className="text-center px-3 py-3 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">
                 Work Hrs
               </th>
@@ -827,6 +832,24 @@ function DailyAttendanceTable({ data }: { data: DailyAttendance[] }) {
                     <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[200px]" title={row.checkInLocation}>
                       📍 {row.checkInLocation}
                     </p>
+                  ) : (
+                    <span className="text-gray-300 dark:text-gray-600">-</span>
+                  )}
+                </td>
+                <td className="text-left px-3 py-3 hidden xl:table-cell">
+                  {(row.checkInNote && row.checkInNote !== "-") || (row.checkOutNote && row.checkOutNote !== "-") ? (
+                    <div className="space-y-0.5">
+                      {row.checkInNote && row.checkInNote !== "-" && (
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[180px]" title={`In: ${row.checkInNote}`}>
+                          💬 In: {row.checkInNote}
+                        </p>
+                      )}
+                      {row.checkOutNote && row.checkOutNote !== "-" && (
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[180px]" title={`Out: ${row.checkOutNote}`}>
+                          💬 Out: {row.checkOutNote}
+                        </p>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-gray-300 dark:text-gray-600">-</span>
                   )}

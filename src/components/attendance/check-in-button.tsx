@@ -13,6 +13,7 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
   const { formatted } = useLiveTimer();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState("");
   const [showMap, setShowMap] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -114,7 +115,7 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
       const res = await fetch("/api/attendance/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, latitude, longitude, deviceInfo }),
+        body: JSON.stringify({ type, latitude, longitude, deviceInfo, note: note.trim() || undefined }),
       });
 
       const data = await res.json();
@@ -131,6 +132,7 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
       } else {
         checkOut();
       }
+      setNote("");
       onSessionChange?.();
     } catch {
       // Offline fallback
@@ -200,6 +202,17 @@ export function CheckInOutButton({ onSessionChange }: { onSessionChange?: () => 
           Location ready{accuracy ? ` (±${Math.round(accuracy)}m)` : ""}
         </div>
       )}
+
+      {/* Note / Comment input */}
+      <div className="w-full max-w-xs">
+        <input
+          type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={isCheckedIn ? "Add check-out note (optional)" : "Add check-in note (optional)"}
+          className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+        />
+      </div>
 
       {/* Floating action button */}
       <button

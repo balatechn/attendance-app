@@ -10,6 +10,7 @@ interface Session {
   latitude: number;
   longitude: number;
   address?: string | null;
+  note?: string | null;
 }
 
 interface SessionTimelineProps {
@@ -71,6 +72,11 @@ export function SessionTimeline({ sessions }: SessionTimelineProps) {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-[260px]" title={session.address || `${session.latitude.toFixed(4)}, ${session.longitude.toFixed(4)}`}>
                 📍 {session.address || `${session.latitude.toFixed(4)}, ${session.longitude.toFixed(4)}`}
               </p>
+              {session.note && (
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 truncate max-w-[260px]" title={session.note}>
+                  💬 {session.note}
+                </p>
+              )}
             </div>
           </div>
         ))}

@@ -131,6 +131,7 @@ model AttendanceSession {
   latitude    Float
   longitude   Float
   address     String?
+  note        String?
   deviceInfo  String?
   isAutoOut   Boolean     @default(false)
   createdAt   DateTime    @default(now())

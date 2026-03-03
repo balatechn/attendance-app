@@ -50,6 +50,7 @@ export default async function DashboardPage() {
         latitude: s.latitude,
         longitude: s.longitude,
         address: s.address || null,
+        note: s.note || null,
       }))}
       summary={
         dailySummary

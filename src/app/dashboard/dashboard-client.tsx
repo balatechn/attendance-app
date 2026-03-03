@@ -19,6 +19,7 @@ interface Props {
     latitude: number;
     longitude: number;
     address?: string | null;
+    note?: string | null;
   }>;
   summary: {
     firstCheckIn: string | null;
