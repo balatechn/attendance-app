@@ -95,12 +95,47 @@ interface LeaveData {
   totalBalance: number;
 }
 
+interface DailyEmailEntity {
+  entityId: string;
+  entityName: string;
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  locations: Array<{
+    locationId: string;
+    locationName: string;
+    total: number;
+    present: number;
+    absent: number;
+    employees: Array<{
+      id: string;
+      name: string;
+      employeeCode: string | null;
+      department: string;
+      status: string;
+      firstCheckIn: string | null;
+      lastCheckOut: string | null;
+      workHours: string;
+      overtimeMins: number;
+    }>;
+  }>;
+}
+
+interface DailyEmailReport {
+  date: string;
+  displayDate: string;
+  stats: { total: number; present: number; absent: number; late: number };
+  entities: DailyEmailEntity[];
+}
+
 type ReportTab =
   | "attendance-summary"
   | "daily-attendance"
   | "late-arrivals"
   | "overtime"
-  | "leave-summary";
+  | "leave-summary"
+  | "daily-email";
 
 const TABS: { key: ReportTab; label: string; icon: string }[] = [
   { key: "attendance-summary", label: "Attendance Summary", icon: "📊" },
@@ -108,6 +143,7 @@ const TABS: { key: ReportTab; label: string; icon: string }[] = [
   { key: "late-arrivals", label: "Late Arrivals", icon: "⏰" },
   { key: "overtime", label: "Overtime", icon: "🕐" },
   { key: "leave-summary", label: "Leave Summary", icon: "🏖️" },
+  { key: "daily-email", label: "Daily Email Report", icon: "📧" },
 ];
 
 // ─── Main Component ───────────────────────────────────────
@@ -144,7 +180,10 @@ export function AdminReportsClient({
   const [lateData, setLateData] = useState<LateArrival[]>([]);
   const [overtimeData, setOvertimeData] = useState<OvertimeData[]>([]);
   const [leaveData, setLeaveData] = useState<LeaveData[]>([]);
+  const [dailyEmailData, setDailyEmailData] = useState<DailyEmailReport | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState("");
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -187,6 +226,41 @@ export function AdminReportsClient({
       setLoading(false);
     }
   }, [activeTab, startDate, endDate, department, entity, location]);
+
+  const fetchDailyEmail = useCallback(async () => {
+    setLoading(true);
+    setHasSearched(true);
+    setEmailSent("");
+    try {
+      const res = await fetch(`/api/reports/daily-email?date=${startDate}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to fetch");
+      setDailyEmailData(json.data);
+    } catch {
+      setDailyEmailData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate]);
+
+  const handleSendDailyEmail = async () => {
+    setSendingEmail(true);
+    setEmailSent("");
+    try {
+      const res = await fetch("/api/reports/daily-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: startDate }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed");
+      setEmailSent(`Sent ${json.data.sent}/${json.data.total} emails successfully!`);
+    } catch {
+      setEmailSent("Failed to send emails");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -271,6 +345,49 @@ export function AdminReportsClient({
       {/* Filters */}
       <Card className="p-4">
         <div className="flex flex-col gap-3">
+          {activeTab === "daily-email" ? (
+            /* Daily Email Report: single date + send button */
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Report Date
+                </label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button onClick={fetchDailyEmail} loading={loading} className="flex-1">
+                  View Report
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleSendDailyEmail}
+                  loading={sendingEmail}
+                  disabled={!dailyEmailData}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span className="ml-1">Send Email</span>
+                </Button>
+              </div>
+              <div className="flex items-end">
+                {emailSent && (
+                  <p className={cn(
+                    "text-sm font-medium",
+                    emailSent.startsWith("Failed") ? "text-red-500" : "text-green-600 dark:text-green-400"
+                  )}>
+                    {emailSent}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* All other tabs: date range + department/entity/location filters */
+            <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -395,6 +512,8 @@ export function AdminReportsClient({
               This Month
             </button>
           </div>
+            </>
+          )}
         </div>
       </Card>
 
@@ -423,6 +542,9 @@ export function AdminReportsClient({
           {activeTab === "overtime" && <OvertimeTable data={overtimeData} />}
           {activeTab === "leave-summary" && (
             <LeaveSummaryTable data={leaveData} />
+          )}
+          {activeTab === "daily-email" && dailyEmailData && (
+            <DailyEmailReportView data={dailyEmailData} />
           )}
         </>
       )}
@@ -1101,6 +1223,107 @@ function LeaveSummaryTable({ data }: { data: LeaveData[] }) {
         </table>
       </div>
     </Card>
+  );
+}
+
+// ─── Report 6: Daily Email Report View ────────────────────
+function DailyEmailReportView({ data }: { data: DailyEmailReport }) {
+  const STATUS_BG: Record<string, string> = {
+    PRESENT: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
+    LATE: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400",
+    HALF_DAY: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400",
+    ABSENT: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
+    ON_LEAVE: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Overall stats */}
+      <Card>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{data.displayDate}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{data.entities.length} entities</p>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4">
+          <StatCard label="Present" value={data.stats.present} color="green" />
+          <StatCard label="Absent" value={data.stats.absent} color="red" />
+          <StatCard label="Late" value={data.stats.late} color="yellow" />
+          <StatCard label="Total" value={data.stats.total} sub={`${data.stats.total > 0 ? Math.round((data.stats.present / data.stats.total) * 100) : 0}% attendance`} />
+        </div>
+      </Card>
+
+      {/* Entity-wise breakdown */}
+      {data.entities.map((ent) => (
+        <Card key={ent.entityId}>
+          {/* Entity header */}
+          <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500 rounded-t-xl">
+            <h3 className="text-white font-bold flex items-center gap-2">
+              <span>🏢</span> {ent.entityName}
+            </h3>
+            <div className="flex gap-4 mt-1 text-blue-100 text-xs">
+              <span>{ent.present} present</span>
+              <span>{ent.absent} absent</span>
+              <span>{ent.late} late</span>
+              <span>{ent.total} total</span>
+            </div>
+          </div>
+
+          {/* Locations */}
+          {ent.locations.map((loc) => (
+            <div key={loc.locationId}>
+              {/* Location header */}
+              <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20 flex items-center gap-2">
+                <span className="text-sm">📍</span>
+                <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">{loc.locationName}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                  {loc.present} present · {loc.absent} absent · {loc.total} total
+                </span>
+              </div>
+
+              {/* Employee rows */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-gray-800/50">
+                      <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs">Employee</th>
+                      <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs hidden sm:table-cell">Dept</th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs">Status</th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs">Check In</th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs">Check Out</th>
+                      <th className="text-center px-3 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs">Work Hrs</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {loc.employees.map((emp) => (
+                      <tr key={emp.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                        <td className="px-4 py-2">
+                          <div className="font-medium text-gray-900 dark:text-white text-sm">{emp.name}</div>
+                          {emp.employeeCode && <div className="text-[11px] text-gray-400">{emp.employeeCode}</div>}
+                        </td>
+                        <td className="px-3 py-2 text-gray-500 text-xs hidden sm:table-cell">{emp.department}</td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={cn(
+                            "inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold",
+                            STATUS_BG[emp.status] || "bg-gray-100 dark:bg-gray-800 text-gray-500"
+                          )}>
+                            {emp.status.replace("_", " ")}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300">{emp.firstCheckIn || "—"}</td>
+                        <td className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300">{emp.lastCheckOut || "—"}</td>
+                        <td className="px-3 py-2 text-center text-xs font-medium text-gray-900 dark:text-white">{emp.workHours}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </Card>
+      ))}
+
+      {data.entities.length === 0 && <EmptyState message="No attendance data for this date." />}
+    </div>
   );
 }
 
