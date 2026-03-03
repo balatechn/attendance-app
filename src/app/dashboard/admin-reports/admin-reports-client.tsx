@@ -255,8 +255,8 @@ export function AdminReportsClient({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed");
       setEmailSent(`Sent ${json.data.sent}/${json.data.total} emails successfully!`);
-    } catch {
-      setEmailSent("Failed to send emails");
+    } catch (err) {
+      setEmailSent(err instanceof Error ? err.message : "Failed to send emails");
     } finally {
       setSendingEmail(false);
     }

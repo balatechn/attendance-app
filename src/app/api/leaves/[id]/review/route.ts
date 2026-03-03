@@ -77,6 +77,40 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             used: { increment: leaveRequest.days },
           },
         });
+
+        // ── Mark DailySummary as ON_LEAVE for each date in the range ──
+        const current = new Date(leaveRequest.startDate);
+        current.setHours(0, 0, 0, 0);
+        const end = new Date(leaveRequest.endDate);
+        end.setHours(0, 0, 0, 0);
+
+        while (current <= end) {
+          const d = new Date(current);
+          await prisma.dailySummary.upsert({
+            where: { userId_date: { userId: leaveRequest.userId, date: d } },
+            create: {
+              userId: leaveRequest.userId,
+              date: d,
+              firstCheckIn: null,
+              lastCheckOut: null,
+              totalWorkMins: 0,
+              totalBreakMins: 0,
+              overtimeMins: 0,
+              sessionCount: 0,
+              status: "ON_LEAVE",
+            },
+            update: {
+              status: "ON_LEAVE",
+              totalWorkMins: 0,
+              totalBreakMins: 0,
+              overtimeMins: 0,
+              sessionCount: 0,
+              firstCheckIn: null,
+              lastCheckOut: null,
+            },
+          });
+          current.setDate(current.getDate() + 1);
+        }
       } else {
         // REJECTED - release pending
         await prisma.leaveBalance.update({

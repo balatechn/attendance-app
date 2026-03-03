@@ -222,12 +222,12 @@ export async function POST(request: NextRequest) {
       entityMap.get(key)!.employees.push(emp);
     }
 
-    const superAdmins = await prisma.user.findMany({
-      where: { role: "SUPER_ADMIN", isActive: true },
+    const admins = await prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "SUPER_ADMIN"] }, isActive: true },
       select: { email: true },
     });
 
-    if (superAdmins.length === 0) return apiError("No SUPER_ADMIN recipients", 404);
+    if (admins.length === 0) return apiError("No admin recipients found", 404);
 
     const allResults: Array<{ entity: string; email: string; success: boolean }> = [];
 
@@ -302,13 +302,13 @@ export async function POST(request: NextRequest) {
         </table>`;
 
       const results = await Promise.allSettled(
-        superAdmins.map((a) => sendEmail({ to: a.email, subject: `📊 Daily Report — ${entityName} — ${displayDate}`, html }))
+        admins.map((a) => sendEmail({ to: a.email, subject: `📊 Daily Report — ${entityName} — ${displayDate}`, html }))
       );
       for (let i = 0; i < results.length; i++) {
         const r = results[i];
         allResults.push({
           entity: entityName,
-          email: superAdmins[i].email,
+          email: admins[i].email,
           success: r.status === "fulfilled" && (r.value as { success: boolean }).success,
         });
       }

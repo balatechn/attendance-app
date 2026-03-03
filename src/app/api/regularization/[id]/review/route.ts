@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { apiResponse, apiError } from "@/lib/api-utils";
 import { hasPermission } from "@/lib/rbac";
 import { sendEmail, regularizationStatusEmail } from "@/lib/email";
-import { formatIST } from "@/lib/datetime";
+import { formatIST, getWorkingMinutes, getOvertimeMinutes, isLateArrival, getShiftLateThreshold } from "@/lib/datetime";
 import type { Role } from "@/generated/prisma/enums";
 
 export async function POST(
@@ -79,6 +79,71 @@ export async function POST(
             latitude: 0,
             longitude: 0,
             address: "Regularized",
+          },
+        });
+      }
+
+      // ── Recalculate DailySummary for the regularized date ──
+      const regDate = new Date(regularization.date);
+      regDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(regDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const allSessions = await prisma.attendanceSession.findMany({
+        where: {
+          userId: regularization.employeeId,
+          timestamp: { gte: regDate, lt: nextDate },
+        },
+        orderBy: { timestamp: "asc" },
+      });
+
+      if (allSessions.length > 0) {
+        const { workMins, breakMins } = getWorkingMinutes(
+          allSessions.map((s) => ({ type: s.type, timestamp: s.timestamp }))
+        );
+
+        const firstCheckIn = allSessions.find((s) => s.type === "CHECK_IN")?.timestamp ?? null;
+        const checkOuts = allSessions.filter((s) => s.type === "CHECK_OUT");
+        const lastCheckOut = checkOuts.length > 0 ? checkOuts[checkOuts.length - 1].timestamp : null;
+
+        const employee = await prisma.user.findUnique({
+          where: { id: regularization.employeeId },
+          select: { shift: true },
+        });
+        const shift = employee?.shift;
+        const lateThreshold = shift
+          ? getShiftLateThreshold(shift.startTime, shift.graceMinutes)
+          : "09:10";
+        const standardWorkMins = shift?.standardWorkMins ?? 480;
+
+        const overtimeMins = getOvertimeMinutes(workMins, standardWorkMins / 60);
+        const isLate = firstCheckIn ? isLateArrival(firstCheckIn, lateThreshold) : false;
+
+        let status = "PRESENT";
+        if (isLate) status = "LATE";
+        if (workMins > 0 && workMins < 240) status = "HALF_DAY";
+
+        await prisma.dailySummary.upsert({
+          where: { userId_date: { userId: regularization.employeeId, date: regDate } },
+          create: {
+            userId: regularization.employeeId,
+            date: regDate,
+            firstCheckIn,
+            lastCheckOut,
+            totalWorkMins: workMins,
+            totalBreakMins: breakMins,
+            overtimeMins,
+            sessionCount: allSessions.length,
+            status,
+          },
+          update: {
+            firstCheckIn: firstCheckIn || undefined,
+            lastCheckOut,
+            totalWorkMins: workMins,
+            totalBreakMins: breakMins,
+            overtimeMins,
+            sessionCount: allSessions.length,
+            status,
           },
         });
       }
