@@ -13,6 +13,7 @@ interface Employee {
   email: string;
   phone: string | null;
   employeeCode: string | null;
+  designation: string | null;
   role: Role;
   departmentId: string | null;
   entityId: string | null;

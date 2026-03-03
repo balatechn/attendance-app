@@ -59,6 +59,7 @@ export function AddEmployeeModal({ departments, entities, locations, shifts, man
     email: "",
     phone: "",
     employeeCode: "",
+    designation: "",
     role: "EMPLOYEE" as Role,
     departmentId: "",
     entityId: "",
@@ -175,6 +176,13 @@ export function AddEmployeeModal({ departments, entities, locations, shifts, man
                 onChange={(e) => setForm({ ...form, employeeCode: e.target.value })}
               />
             </div>
+
+            <Input
+              label="Designation"
+              placeholder="e.g. Senior Engineer"
+              value={form.designation}
+              onChange={(e) => setForm({ ...form, designation: e.target.value })}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

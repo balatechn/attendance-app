@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
     // Notify manager
     const employee = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: { manager: true },
+      include: { manager: true, location: true },
     });
 
     if (employee?.manager) {
@@ -243,6 +243,8 @@ export async function POST(request: NextRequest) {
               <strong>${employee.name}</strong> has submitted a leave request.
             </p>
             <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+              ${employee.designation ? `<tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;width:120px;">Designation</td><td style="padding:8px 12px;">${employee.designation}</td></tr>` : ''}
+              ${employee.location ? `<tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;width:120px;">Location</td><td style="padding:8px 12px;">${employee.location.name}</td></tr>` : ''}
               <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;width:120px;">Type</td><td style="padding:8px 12px;">${leaveType.name}</td></tr>
               <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">From</td><td style="padding:8px 12px;">${formatIST(start, "MMM dd, yyyy")}</td></tr>
               <tr><td style="padding:8px 12px;background:#f1f5f9;font-weight:600;">To</td><td style="padding:8px 12px;">${formatIST(end, "MMM dd, yyyy")}</td></tr>

@@ -35,6 +35,7 @@ interface EmployeeData {
   email: string;
   phone: string | null;
   employeeCode: string | null;
+  designation: string | null;
   role: Role;
   departmentId: string | null;
   entityId: string | null;
@@ -84,6 +85,7 @@ export function EditEmployeeModal({
     email: employee.email,
     phone: employee.phone || "",
     employeeCode: employee.employeeCode || "",
+    designation: employee.designation || "",
     role: employee.role,
     departmentId: employee.departmentId || "",
     entityId: employee.entityId || "",
@@ -210,6 +212,15 @@ export function EditEmployeeModal({
                 }
               />
             </div>
+
+            <Input
+              label="Designation"
+              placeholder="e.g. Senior Engineer"
+              value={form.designation}
+              onChange={(e) =>
+                setForm({ ...form, designation: e.target.value })
+              }
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

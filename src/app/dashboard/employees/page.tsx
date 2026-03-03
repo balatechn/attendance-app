@@ -88,6 +88,7 @@ export default async function EmployeesPage() {
           email: e.email,
           phone: e.phone,
           employeeCode: e.employeeCode,
+          designation: e.designation,
           role: e.role,
           departmentId: e.departmentId,
           entityId: e.entityId,

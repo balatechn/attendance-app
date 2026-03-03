@@ -52,6 +52,7 @@ model User {
   avatarUrl          String?
   phone              String?
   employeeCode       String?  @unique
+  designation        String?
   isActive           Boolean  @default(true)
   geofenceEnabled    Boolean  @default(true)
   mustChangePassword Boolean  @default(false)
