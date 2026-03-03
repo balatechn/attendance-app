@@ -16,6 +16,7 @@ export default async function LeavesPage() {
   const year = new Date().getFullYear();
   const canApprove = hasPermission(role, "leave:approve");
   const canViewAll = hasPermission(role, "leave:view-all");
+  const canManageBalance = hasPermission(role, "leave:balance-manage");
 
   // Entity-based visibility: only SUPER_ADMIN sees all entities
   const isSuperAdmin = role === "SUPER_ADMIN";
@@ -43,7 +44,13 @@ export default async function LeavesPage() {
     }
   }
 
-  const [leaveTypes, requests, balances] = await Promise.all([
+  // Build employee filter for balance management
+  const employeeWhere: Record<string, unknown> = { isActive: true };
+  if (!isSuperAdmin && userEntityId) {
+    employeeWhere.entityId = userEntityId;
+  }
+
+  const [leaveTypes, requests, balances, employees] = await Promise.all([
     prisma.leaveType.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
@@ -62,12 +69,34 @@ export default async function LeavesPage() {
       where: { userId, year },
       include: { leaveType: { select: { name: true, code: true } } },
     }),
+    // Only fetch employees list if user can manage balances
+    canManageBalance
+      ? prisma.user.findMany({
+          where: employeeWhere,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            employeeCode: true,
+            entity: { select: { name: true } },
+            department: { select: { name: true } },
+            leaveBalances: {
+              where: { year },
+              include: {
+                leaveType: { select: { id: true, name: true, code: true } },
+              },
+            },
+          },
+          orderBy: { name: "asc" },
+        })
+      : Promise.resolve([]),
   ]);
 
   return (
     <LeavesClient
       currentUserId={userId}
       canApprove={canApprove}
+      canManageBalance={canManageBalance}
       leaveTypes={leaveTypes.map((lt) => ({
         id: lt.id,
         name: lt.name,
@@ -104,6 +133,25 @@ export default async function LeavesPage() {
         pending: b.pending,
         available: b.allocated - b.used - b.pending,
       }))}
+      employees={employees.map((e) => ({
+        id: e.id,
+        name: e.name,
+        email: e.email,
+        employeeCode: e.employeeCode || "",
+        entityName: e.entity?.name || "—",
+        departmentName: e.department?.name || "—",
+        balances: e.leaveBalances.map((b) => ({
+          id: b.id,
+          leaveTypeId: b.leaveType.id,
+          leaveType: b.leaveType.name,
+          leaveCode: b.leaveType.code,
+          allocated: b.allocated,
+          used: b.used,
+          pending: b.pending,
+          available: b.allocated - b.used - b.pending,
+        })),
+      }))}
+      year={year}
     />
   );
 }

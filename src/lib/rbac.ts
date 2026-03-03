@@ -49,7 +49,8 @@ export type Permission =
   | "geofence:manage"
   | "leave:apply"
   | "leave:approve"
-  | "leave:view-all";
+  | "leave:view-all"
+  | "leave:balance-manage";
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   EMPLOYEE: [
@@ -102,6 +103,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "departments:manage",
     "leave:approve",
     "leave:view-all",
+    "leave:balance-manage",
   ],
   ADMIN: [
     "attendance:check-in",
@@ -122,6 +124,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "leave:apply",
     "leave:approve",
     "leave:view-all",
+    "leave:balance-manage",
   ],
   SUPER_ADMIN: [
     "attendance:check-in",
@@ -142,6 +145,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "leave:apply",
     "leave:approve",
     "leave:view-all",
+    "leave:balance-manage",
   ],
 };
 
