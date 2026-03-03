@@ -45,6 +45,7 @@ const ROLES: { value: Role; label: string }[] = [
   { value: "HR_ADMIN", label: "HR Admin" },
   { value: "MANAGEMENT", label: "Management" },
   { value: "ADMIN", label: "Admin" },
+  { value: "SUPER_ADMIN", label: "Super Admin" },
 ];
 
 export function AddEmployeeModal({ departments, entities, locations, shifts, managers, onClose, onSuccess }: Props) {
