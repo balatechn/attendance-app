@@ -556,6 +556,7 @@ export function EmployeesClient({ employees, canManageUsers, departments, entiti
             email: editEmployee.email,
             phone: editEmployee.phone,
             employeeCode: editEmployee.employeeCode,
+            designation: editEmployee.designation,
             role: editEmployee.role,
             departmentId: editEmployee.departmentId,
             entityId: editEmployee.entityId,
