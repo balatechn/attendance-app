@@ -10,24 +10,29 @@ interface ProfileData {
   role: string;
   phone: string | null;
   designation: string | null;
+  departmentId: string | null;
   departmentName: string | null;
+  entityId: string | null;
+  entityName: string | null;
   locationId: string | null;
   locationName: string | null;
   isActive: boolean;
   memberSince: string;
 }
 
-interface Location {
+interface SelectOption {
   id: string;
   name: string;
 }
 
 interface Props {
   user: ProfileData;
-  locations: Location[];
+  locations: SelectOption[];
+  entities: SelectOption[];
+  departments: SelectOption[];
 }
 
-export function ProfileClient({ user, locations }: Props) {
+export function ProfileClient({ user, locations, entities, departments }: Props) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -35,11 +40,15 @@ export function ProfileClient({ user, locations }: Props) {
 
   const [phone, setPhone] = useState(user.phone || "");
   const [designation, setDesignation] = useState(user.designation || "");
+  const [departmentId, setDepartmentId] = useState(user.departmentId || "");
+  const [entityId, setEntityId] = useState(user.entityId || "");
   const [locationId, setLocationId] = useState(user.locationId || "");
 
   // Derive display values (updated after save)
   const [displayPhone, setDisplayPhone] = useState(user.phone || "");
   const [displayDesignation, setDisplayDesignation] = useState(user.designation || "");
+  const [displayDepartmentName, setDisplayDepartmentName] = useState(user.departmentName || "");
+  const [displayEntityName, setDisplayEntityName] = useState(user.entityName || "");
   const [displayLocationName, setDisplayLocationName] = useState(user.locationName || "");
 
   const handleSave = async () => {
@@ -50,7 +59,7 @@ export function ProfileClient({ user, locations }: Props) {
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, designation, locationId }),
+        body: JSON.stringify({ phone, designation, departmentId, entityId, locationId }),
       });
 
       const data = await res.json();
@@ -62,6 +71,8 @@ export function ProfileClient({ user, locations }: Props) {
       // Update display values
       setDisplayPhone(data.data.phone || "");
       setDisplayDesignation(data.data.designation || "");
+      setDisplayDepartmentName(data.data.department?.name || "");
+      setDisplayEntityName(data.data.entity?.name || "");
       setDisplayLocationName(data.data.location?.name || "");
 
       setSuccess(true);
@@ -77,6 +88,10 @@ export function ProfileClient({ user, locations }: Props) {
   const handleCancel = () => {
     setPhone(displayPhone);
     setDesignation(displayDesignation);
+    const dept = departments.find((d) => d.name === displayDepartmentName);
+    setDepartmentId(dept?.id || "");
+    const ent = entities.find((e) => e.name === displayEntityName);
+    setEntityId(ent?.id || "");
     const loc = locations.find((l) => l.name === displayLocationName);
     setLocationId(loc?.id || "");
     setEditing(false);
@@ -129,11 +144,27 @@ export function ProfileClient({ user, locations }: Props) {
       )}
 
       <div className="space-y-3">
-        <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-800">
+        {/* Editable: Department */}
+        <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
           <span className="text-sm text-gray-500 dark:text-gray-400">Department</span>
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
-            {user.departmentName || "—"}
-          </span>
+          {editing ? (
+            <select
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+              className="w-48 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 text-right"
+            >
+              <option value="">Select Department</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              {displayDepartmentName || "—"}
+            </span>
+          )}
         </div>
 
         {/* Editable: Designation */}
@@ -149,6 +180,29 @@ export function ProfileClient({ user, locations }: Props) {
           ) : (
             <span className="text-sm font-medium text-gray-900 dark:text-white">
               {displayDesignation || "—"}
+            </span>
+          )}
+        </div>
+
+        {/* Editable: Entity */}
+        <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Entity</span>
+          {editing ? (
+            <select
+              value={entityId}
+              onChange={(e) => setEntityId(e.target.value)}
+              className="w-48 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 text-right"
+            >
+              <option value="">Select Entity</option>
+              {entities.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              {displayEntityName || "—"}
             </span>
           )}
         </div>

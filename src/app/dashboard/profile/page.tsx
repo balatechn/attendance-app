@@ -12,12 +12,22 @@ export default async function ProfilePage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [user, locations] = await Promise.all([
+  const [user, locations, entities, departments] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      include: { department: true, location: true },
+      include: { department: true, location: true, entity: true },
     }),
     prisma.location.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.entity.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.department.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
@@ -40,13 +50,18 @@ export default async function ProfilePage() {
           role: user.role,
           phone: user.phone,
           designation: user.designation,
+          departmentId: user.departmentId,
           departmentName: user.department?.name || null,
+          entityId: user.entityId,
+          entityName: user.entity?.name || null,
           locationId: user.locationId,
           locationName: user.location?.name || null,
           isActive: user.isActive,
           memberSince: formatDate(user.createdAt),
         }}
         locations={locations}
+        entities={entities}
+        departments={departments}
       />
 
       <form

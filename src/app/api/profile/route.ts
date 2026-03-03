@@ -9,18 +9,21 @@ export async function PUT(request: NextRequest) {
     if (!session?.user) return apiError("Unauthorized", 401);
 
     const body = await request.json();
-    const { phone, designation, locationId } = body;
+    const { phone, designation, departmentId, entityId, locationId } = body;
 
     const user = await prisma.user.update({
       where: { id: session.user.id },
       data: {
         phone: phone?.trim() || null,
         designation: designation?.trim() || null,
+        departmentId: departmentId || null,
+        entityId: entityId || null,
         locationId: locationId || null,
       },
       include: {
-        department: { select: { name: true } },
+        department: { select: { id: true, name: true } },
         location: { select: { id: true, name: true } },
+        entity: { select: { id: true, name: true } },
       },
     });
 
@@ -30,8 +33,12 @@ export async function PUT(request: NextRequest) {
       email: user.email,
       phone: user.phone,
       designation: user.designation,
+      departmentId: user.departmentId,
+      department: user.department ? { name: user.department.name } : null,
       locationId: user.locationId,
       location: user.location ? { name: user.location.name } : null,
+      entityId: user.entityId,
+      entity: user.entity ? { name: user.entity.name } : null,
     });
   } catch (error) {
     console.error("Profile update error:", error);
