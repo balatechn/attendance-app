@@ -4,16 +4,9 @@ import prisma from "@/lib/prisma";
 import { apiResponse, apiError } from "@/lib/api-utils";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
-import { startOfDay, endOfDay, addDays, format, getDay } from "date-fns";
+import { startOfDay, endOfDay, format, getDay } from "date-fns";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function getWeekStart(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay());
-  return d;
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +14,7 @@ export async function GET(request: NextRequest) {
     if (!session?.user) return apiError("Unauthorized", 401);
 
     const { searchParams } = new URL(request.url);
-    const weekParam = searchParams.get("week");
+    const monthParam = searchParams.get("month"); // yyyy-MM
     const employeeId = searchParams.get("employee");
 
     const role = session.user.role as Role;
@@ -42,18 +35,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Week range
-    const weekDate = weekParam ? new Date(weekParam + "T00:00:00") : new Date();
-    const weekStartDate = getWeekStart(weekDate);
-    const weekEndDate = addDays(weekStartDate, 6);
-    const todayStr = format(new Date(), "yyyy-MM-dd");
+    // Month range
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth(); // 0-indexed
+    if (monthParam) {
+      const [y, m] = monthParam.split("-").map(Number);
+      year = y;
+      month = m - 1;
+    }
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0); // last day of month
+    const todayStr = format(now, "yyyy-MM-dd");
+    const daysInMonth = monthEnd.getDate();
 
-    // Parallel fetch: sessions + summaries
-    const [weeklySessions, weekSummaries] = await Promise.all([
+    // Parallel fetch
+    const [monthlySessions, monthSummaries] = await Promise.all([
       prisma.attendanceSession.findMany({
         where: {
           userId: targetUserId,
-          timestamp: { gte: startOfDay(weekStartDate), lte: endOfDay(weekEndDate) },
+          timestamp: { gte: startOfDay(monthStart), lte: endOfDay(monthEnd) },
         },
         select: {
           id: true,
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
       prisma.dailySummary.findMany({
         where: {
           userId: targetUserId,
-          date: { gte: startOfDay(weekStartDate), lte: endOfDay(weekEndDate) },
+          date: { gte: startOfDay(monthStart), lte: endOfDay(monthEnd) },
         },
         select: {
           date: true,
@@ -79,25 +80,26 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Build 7 days
-    const weekDays = Array.from({ length: 7 }, (_, i) => {
-      const dayDate = addDays(weekStartDate, i);
+    // Build days array
+    const days = Array.from({ length: daysInMonth }, (_, i) => {
+      const dayDate = new Date(year, month, i + 1);
       const dateStr = format(dayDate, "yyyy-MM-dd");
       const dayOfWeek = getDay(dayDate);
 
-      const daySessions = weeklySessions.filter(
+      const daySessions = monthlySessions.filter(
         (s) => format(s.timestamp, "yyyy-MM-dd") === dateStr
       );
-      const summary = weekSummaries.find(
+      const summary = monthSummaries.find(
         (s) => format(s.date, "yyyy-MM-dd") === dateStr
       );
 
       return {
         date: dateStr,
         dayName: DAY_NAMES[dayOfWeek],
-        dayNum: dayDate.getDate(),
+        dayNum: i + 1,
+        dayOfWeek,
         isToday: dateStr === todayStr,
-        isWeekend: dayOfWeek === 0,
+        isSunday: dayOfWeek === 0,
         status: summary?.status || "",
         firstCheckIn: summary?.firstCheckIn?.toISOString() || null,
         lastCheckOut: summary?.lastCheckOut?.toISOString() || null,
@@ -112,13 +114,18 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // First day offset (for calendar grid padding)
+    const firstDayOfWeek = getDay(monthStart);
+
     return apiResponse({
-      weekDays,
-      weekStart: format(weekStartDate, "yyyy-MM-dd"),
-      weekEnd: format(weekEndDate, "yyyy-MM-dd"),
+      days,
+      year,
+      month: month + 1,
+      firstDayOfWeek,
+      monthLabel: monthStart.toLocaleString("en-US", { month: "long", year: "numeric" }),
     });
   } catch (error) {
-    console.error("Weekly attendance error:", error);
+    console.error("Monthly attendance error:", error);
     return apiError("Internal server error", 500);
   }
 }
