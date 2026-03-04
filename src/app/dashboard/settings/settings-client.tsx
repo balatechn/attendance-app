@@ -1320,6 +1320,7 @@ function LeaveTypesTab({ leaveTypes: initialTypes }: { leaveTypes: LeaveTypeData
 // ─── Email Config Tab ─────────────────────────────────────
 
 const EMAIL_PRESETS = {
+  mailgun: { host: "smtp.mailgun.org", port: 587, secure: false },
   gmail: { host: "smtp.gmail.com", port: 587, secure: false },
   microsoft365: { host: "smtp.office365.com", port: 587, secure: false },
   custom: { host: "", port: 587, secure: false },
@@ -1329,13 +1330,15 @@ function EmailConfigTab({ config }: { config: EmailConfigData | null }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const [form, setForm] = useState({
-    provider: config?.provider || "gmail",
-    host: config?.host || "smtp.gmail.com",
+    provider: config?.provider || "mailgun",
+    host: config?.host || "smtp.mailgun.org",
     port: config?.port || 587,
     secure: config?.secure || false,
     username: config?.username || "",
@@ -1418,8 +1421,9 @@ function EmailConfigTab({ config }: { config: EmailConfigData | null }) {
         {/* Provider selection */}
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Email Provider</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
+              { key: "mailgun", label: "Mailgun", icon: "📧" },
               { key: "gmail", label: "Gmail", icon: "G" },
               { key: "microsoft365", label: "Microsoft 365", icon: "M" },
               { key: "custom", label: "Custom SMTP", icon: "⚙" },
@@ -1520,6 +1524,16 @@ function EmailConfigTab({ config }: { config: EmailConfigData | null }) {
           </div>
         )}
 
+        {form.provider === "mailgun" && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-xs text-blue-700 dark:text-blue-400">
+              <strong>Mailgun:</strong> Use your Mailgun SMTP credentials. Username is typically{" "}
+              <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">postmaster@your-domain</code> or a custom login.
+              The from email must be from a verified domain.
+            </p>
+          </div>
+        )}
+
         {/* Test Result */}
         {testResult && (
           <div className={`rounded-lg p-3 text-sm ${
@@ -1541,6 +1555,58 @@ function EmailConfigTab({ config }: { config: EmailConfigData | null }) {
           <Button type="submit" loading={loading}>
             Save Configuration
           </Button>
+        </div>
+
+        {/* Send Test Email */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Send Test Email</h4>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Send an actual test email to verify delivery is working end-to-end.</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Recipient email address"
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              loading={sendingTest}
+              disabled={!testEmail || !form.host || !form.username}
+              onClick={async () => {
+                setSendingTest(true);
+                setTestResult(null);
+                try {
+                  const res = await fetch("/api/settings/email-config", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      host: form.host,
+                      port: form.port,
+                      secure: form.secure,
+                      username: form.username,
+                      password: form.password || "use-saved",
+                      fromName: form.fromName,
+                      fromEmail: form.fromEmail,
+                      testTo: testEmail,
+                    }),
+                  });
+                  const data = await res.json();
+                  setTestResult({
+                    ok: data.success,
+                    message: data.success ? data.data?.message || "Test email sent!" : data.error?.message || "Failed to send",
+                  });
+                } catch {
+                  setTestResult({ ok: false, message: "Failed to send test email" });
+                } finally {
+                  setSendingTest(false);
+                }
+              }}
+            >
+              📧 Send Test
+            </Button>
+          </div>
         </div>
       </form>
     </Card>
