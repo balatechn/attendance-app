@@ -173,15 +173,16 @@ interface MonthlyStatsProps {
     totalBreakHours: number;
     workingDays: number;
   };
+  hideOT?: boolean;
 }
 
-export function MonthlyStats({ stats }: MonthlyStatsProps) {
+export function MonthlyStats({ stats, hideOT }: MonthlyStatsProps) {
   const statItems = [
     { label: "Present Days", value: stats.presentDays, color: "text-green-600 dark:text-green-400" },
     { label: "Absent Days", value: stats.absentDays, color: "text-red-600 dark:text-red-400" },
     { label: "Late Arrivals", value: stats.lateDays, color: "text-yellow-600 dark:text-yellow-400" },
     { label: "Work Hours", value: `${stats.totalWorkHours.toFixed(1)}h`, color: "text-blue-600 dark:text-blue-400" },
-    { label: "Overtime", value: `${stats.totalOvertimeHours.toFixed(1)}h`, color: "text-orange-600 dark:text-orange-400" },
+    ...(!hideOT ? [{ label: "Overtime", value: `${stats.totalOvertimeHours.toFixed(1)}h`, color: "text-orange-600 dark:text-orange-400" }] : []),
     { label: "Break Time", value: `${stats.totalBreakHours.toFixed(1)}h`, color: "text-purple-600 dark:text-purple-400" },
   ];
 

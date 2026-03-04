@@ -126,7 +126,7 @@ export function DashboardClient({
       )}
 
       {/* Today's summary */}
-      <DailySummaryWidget summary={summary} />
+      <DailySummaryWidget summary={summary} hideOT={user.role !== "SUPER_ADMIN"} />
 
       {/* Session timeline */}
       <SessionTimeline sessions={sessions} />

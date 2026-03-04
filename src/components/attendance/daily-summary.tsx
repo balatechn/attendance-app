@@ -14,9 +14,10 @@ interface DailySummaryProps {
     sessionCount: number;
     status: string;
   } | null;
+  hideOT?: boolean;
 }
 
-export function DailySummaryWidget({ summary }: DailySummaryProps) {
+export function DailySummaryWidget({ summary, hideOT }: DailySummaryProps) {
   if (!summary) {
     return (
       <Card>
@@ -55,11 +56,11 @@ export function DailySummaryWidget({ summary }: DailySummaryProps) {
       value: minutesToHoursMinutes(summary.totalBreakMins),
       icon: "☕",
     },
-    {
+    ...(!hideOT ? [{
       label: "Overtime",
       value: minutesToHoursMinutes(summary.overtimeMins),
       icon: "🔥",
-    },
+    }] : []),
     {
       label: "Sessions",
       value: summary.sessionCount.toString(),

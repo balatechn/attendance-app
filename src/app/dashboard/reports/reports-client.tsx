@@ -20,9 +20,10 @@ interface Props {
     workingDays: number;
   };
   initialMonth: string;
+  hideOT?: boolean;
 }
 
-export function ReportsClient({ calendarData, stats, initialMonth }: Props) {
+export function ReportsClient({ calendarData, stats, initialMonth, hideOT }: Props) {
   const [month, setMonth] = useState(new Date(initialMonth));
   const [exporting, setExporting] = useState(false);
 
@@ -72,7 +73,7 @@ export function ReportsClient({ calendarData, stats, initialMonth }: Props) {
         </div>
       </div>
 
-      <MonthlyStats stats={stats} />
+      <MonthlyStats stats={stats} hideOT={hideOT} />
       <CalendarView data={calendarData} month={month} onMonthChange={setMonth} />
     </div>
   );

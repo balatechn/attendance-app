@@ -40,11 +40,14 @@ export default async function ReportsPage() {
     workingDays: summaries.length,
   };
 
+  const hideOT = session.user.role !== "SUPER_ADMIN";
+
   return (
     <ReportsClient
       calendarData={calendarData}
       stats={stats}
       initialMonth={now.toISOString()}
+      hideOT={hideOT}
     />
   );
 }
