@@ -64,10 +64,11 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
 - **Forgot Password** — Self-service password reset via email verification code
 - **Geofencing** — Define office zones with lat/lng and radius; per-user geofence toggle
 - **Movement Alert** — Real-time location ping to detect employees moving away from the office during work
-- **Reports & Export** — 5-tab admin reporting with Excel export; personal reports with PDF export
+- **Admin Reports (SUPER_ADMIN)** — 11 report types with sidebar navigation, Excel export (attendance summary, daily view, detailed log, weekly, payroll, late arrivals, overtime, leave summary, regularization, discrepancy, daily email)
 - **Daily Email Report** — Automated entity-wise attendance summary emailed daily (SUPER_ADMIN only)
 - **Cross-Device Sync** — Auto-refresh dashboard every 30s, server-authoritative timer
-- **Email Notifications** — Automated emails for all workflows with admin BCC
+- **Overtime Visibility** — OT stats hidden from non-SUPER_ADMIN on dashboard and reports
+- **Email Notifications** — Automated emails via Mailgun SMTP (env vars) with admin BCC
 - **Cron Jobs** — Scheduled attendance reminders, daily summary emails, leave balance reset
 - **Role-Based Access** — 6-tier role hierarchy (Employee → Super Admin) with granular permissions
 - **Progressive Web App** — Installable on mobile, offline check-in queue with auto-sync
@@ -87,7 +88,7 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
 | **Database** | PostgreSQL (via [Neon](https://neon.tech) serverless) |
 | **ORM** | [Prisma 7](https://prisma.io) with `@prisma/adapter-pg` |
 | **Auth** | [NextAuth v5](https://authjs.dev) (JWT strategy, Credentials provider) |
-| **Email** | [Nodemailer](https://nodemailer.com) (DB-configurable SMTP) |
+| **Email** | [Nodemailer](https://nodemailer.com) (Mailgun SMTP via env vars) |
 | **PDF/Excel** | jsPDF + jspdf-autotable, SheetJS (xlsx) |
 | **PWA** | next-pwa, Service Worker, Web App Manifest |
 | **Deployment** | [Vercel](https://vercel.com) |
@@ -120,7 +121,7 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
 - **Node.js** 18.17+ (recommended: 20+)
 - **npm** 9+ (or pnpm/yarn)
 - **PostgreSQL** database (recommended: [Neon](https://neon.tech) free tier for serverless)
-- **SMTP credentials** for email notifications (Gmail App Password, SendGrid, etc.)
+- **SMTP credentials** for email notifications (Mailgun recommended, also supports Gmail, SendGrid, etc.)
 
 ---
 
@@ -161,11 +162,11 @@ DATABASE_URL="postgresql://user:password@ep-xxx.region.aws.neon.tech/dbname?sslm
 NEXTAUTH_URL="http://localhost:3000"
 AUTH_SECRET="generate-a-random-32-char-secret"
 
-# Email (SMTP) — Optional, can also configure via Settings page
-SMTP_HOST="smtp.gmail.com"
+# Email (SMTP) — Required for email notifications
+SMTP_HOST="smtp.mailgun.org"
 SMTP_PORT=587
-SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-app-password"
+SMTP_USER="your-mailgun-smtp-user@yourdomain.com"
+SMTP_PASS="your-mailgun-smtp-password"
 EMAIL_FROM="AttendEase <noreply@yourcompany.com>"
 
 # App Config
@@ -244,7 +245,7 @@ attendance-app/
 │   │   │   ├── attendance/     # Check-in/out, daily log, team viewer
 │   │   │   ├── management/     # Management dashboard (charts, location stats)
 │   │   │   ├── leaves/         # Leave application & history
-│   │   │   ├── admin-reports/  # Admin reports (5-tab + daily email, Excel export)
+│   │   │   ├── admin-reports/  # Admin reports (11 types, sidebar nav, SUPER_ADMIN only)
 │   │   │   ├── reports/        # Personal reports with PDF/Excel export
 │   │   │   ├── profile/        # Self-service profile editing
 │   │   │   ├── employees/      # Employee management (add/edit/delete with designation)
@@ -277,7 +278,7 @@ attendance-app/
 │       ├── auth.ts             # NextAuth server config (Credentials provider)
 │       ├── auth.config.ts      # Edge-safe auth config (JWT callbacks with entityId)
 │       ├── prisma.ts           # Prisma client singleton
-│       ├── email.ts            # Email utility (DB config, BCC admin, templates)
+│       ├── email.ts            # Email utility (env-based SMTP, BCC admin, templates)
 │       ├── rbac.ts             # Role-based access control (6-tier permissions matrix)
 │       ├── constants.ts        # App constants, navigation items
 │       ├── api-utils.ts        # API response helpers
@@ -315,7 +316,7 @@ attendance-app/
 | **LeaveRequest** | Leave applications with date range, days count, and approval workflow |
 | **Notification** | In-app notifications with read/unread tracking |
 | **AuditLog** | Audit trail for all actions with JSON metadata |
-| **EmailConfig** | SMTP configuration stored in database (gmail/microsoft365/custom) |
+| **EmailConfig** | SMTP configuration stored in database (mailgun/gmail/microsoft365/custom). Used for Settings page display; email delivery uses env vars. |
 | **AppConfig** | Key-value application settings store |
 | **VerificationCode** | Email verification codes with expiry for registration |
 
@@ -414,7 +415,7 @@ LeaveType ── LeaveRequest (one-to-many)
 ### Reports
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/reports/admin` | Admin reports (summary, daily, late, overtime, leave) with Excel export |
+| GET | `/api/reports/admin` | Admin reports — 10 types (SUPER_ADMIN only): attendance-summary, daily-attendance, detailed-log, weekly-report, monthly-payroll, late-arrivals, overtime, leave-summary, regularization, discrepancy. Excel export. |
 | GET | `/api/reports/export` | Export attendance data (PDF/Excel) |
 | GET | `/api/reports/daily-email` | Entity-wise daily attendance summary email (SUPER_ADMIN only) |
 
@@ -427,7 +428,9 @@ LeaveType ── LeaveRequest (one-to-many)
 | Method | Endpoint | Description |
 |---|---|---|
 | GET/PUT | `/api/settings/app-config` | Application configuration (key-value) |
-| GET/PUT | `/api/settings/email-config` | SMTP email configuration + connection test |
+| GET/POST | `/api/settings/email-config` | SMTP email configuration (save to DB) |
+| PUT | `/api/settings/email-config` | Test SMTP connection |
+| PATCH | `/api/settings/email-config` | Send real test email to a recipient |
 
 ### Cron
 | Method | Endpoint | Description |
@@ -487,7 +490,7 @@ SUPER_ADMIN > ADMIN > MANAGEMENT > HR_ADMIN > MANAGER > EMPLOYEE
 | `/dashboard/profile` | Any authenticated user |
 | `/dashboard/management` | MANAGER |
 | `/dashboard/approvals` | MANAGER |
-| `/dashboard/admin-reports` | HR_ADMIN |
+| `/dashboard/admin-reports` | SUPER_ADMIN |
 | `/dashboard/employees` | HR_ADMIN (view) / ADMIN (manage) |
 | `/dashboard/geofence` | ADMIN |
 | `/dashboard/settings` | ADMIN |
@@ -570,19 +573,22 @@ SUPER_ADMIN > ADMIN > MANAGEMENT > HR_ADMIN > MANAGER > EMPLOYEE
 
 ### Reports & Export
 - **Personal reports** — Daily/Monthly calendar view, filter by month
-- **Admin Reports (5 tabs):**
-  - **Attendance Summary** — Per-employee present/absent/late/half-day/leave counts with total work hours and overtime (MANAGEMENT users show all working days as present)
-  - **Daily Attendance View** — All employees' status, check-in/out times, notes, work hours for a single date (MANAGEMENT users show as "Present")
-  - **Late Arrivals** — Employees ranked by late frequency with expandable date details
-  - **Overtime Report** — Employees ranked by total OT hours with daily breakdown
-  - **Leave Summary** — Allocated/used/pending/balance per leave type per employee
+- **Overtime visibility** — OT stats hidden from non-SUPER_ADMIN on dashboard and personal reports
+- **Admin Reports (SUPER_ADMIN only) — 11 report types with sidebar navigation:**
+  - **Overview:** Attendance Summary, Daily Attendance View
+  - **Detailed Reports:** Detailed Attendance Log (day-by-day with time, location, notes, reg, leave), Regularization Report, Discrepancy Report (missing check-outs, short hours, absent without leave)
+  - **Period Reports:** Weekly Report (week-by-week aggregated), Monthly/Payroll Report (effective days, leave breakdown, balance)
+  - **Analysis:** Late Arrivals (ranked by frequency), Overtime Report, Leave Summary (per-type balances)
+  - **Email:** Daily Email Report (entity-wise summary)
+- **Sidebar navigation** — Categorized report menu with mobile-responsive overlay
 - **Filters** — Date range picker, department, entity, location filters, quick presets (Today, 7 Days, 30 Days, This Month)
 - **PDF export** — Professional formatted attendance reports
-- **Excel export** — All admin reports exportable to .xlsx for payroll integration (includes check-in/out notes)
-- **Entity-filtered** — Non-SUPER_ADMIN users see only their entity's data in all reports
+- **Excel export** — All 10 admin report types exportable to .xlsx for payroll integration (includes check-in/out notes)
+- **SUPER_ADMIN restricted** — Admin Reports page and API accessible only to SUPER_ADMIN role
 
 ### Email Notifications
-- **DB-configurable SMTP** — Set up email via the Settings page (supports Gmail, Microsoft 365, custom SMTP)
+- **Environment-based SMTP** — Configured via `SMTP_*` environment variables (Mailgun recommended)
+- **Settings page** — Test connection and send test emails from the Email Config tab
 - **Auto BCC to admins** — All notification emails BCC'd to admin users (no duplicates)
 - **Templates** — Professional branded HTML email templates
 - **Triggers:**
@@ -619,7 +625,7 @@ SUPER_ADMIN > ADMIN > MANAGEMENT > HR_ADMIN > MANAGER > EMPLOYEE
 - **Locations** — Manage office locations (with entity assignment)
 - **Shifts** — Configure work shifts with times and grace periods
 - **Leave Types** — Configure leave categories with fixed or accrual-based allocation
-- **Email Configuration** — Set SMTP server, test connection, configure sender
+- **Email Configuration** — SMTP provider presets (Mailgun, Gmail, Microsoft 365, Custom), test connection, send test email
 - **App Settings** — Work hours, late threshold, auto-checkout time, geofence enforcement
 
 ---
@@ -678,15 +684,16 @@ After seeding the database (`npm run db:seed`), use these accounts:
 | `NEXTAUTH_URL` | Yes | App URL (for auth callbacks) |
 | `NEXT_PUBLIC_APP_URL` | Yes | Public app URL (for email links) |
 | `NEXT_PUBLIC_APP_NAME` | No | App display name |
-| `SMTP_HOST` | No* | SMTP server hostname |
-| `SMTP_PORT` | No* | SMTP server port (default: 587) |
-| `SMTP_USER` | No* | SMTP username |
-| `SMTP_PASS` | No* | SMTP password |
-| `EMAIL_FROM` | No | Sender email address |
+| `SMTP_HOST` | Yes* | SMTP server hostname (e.g., `smtp.mailgun.org`) |
+| `SMTP_PORT` | Yes* | SMTP server port (default: 587) |
+| `SMTP_USER` | Yes* | SMTP username (e.g., Mailgun SMTP login) |
+| `SMTP_PASS` | Yes* | SMTP password |
+| `SMTP_FROM` | No | SMTP from address (if different from EMAIL_FROM) |
+| `EMAIL_FROM` | No | Sender display in emails (e.g., `AttendEase <noreply@company.com>`) |
 | `NEXT_PUBLIC_GOOGLE_MAPS_KEY` | No | Google Maps API key |
 | `NEXT_PUBLIC_DEFAULT_GEOFENCE_RADIUS` | No | Default geofence radius (meters) |
 
-> *SMTP settings can alternatively be configured through the Settings page in the app (stored in database).
+> *SMTP settings are required as environment variables. The Settings page provides a UI for testing the connection and sending test emails, but the app uses env vars for all email delivery.
 
 ---
 
