@@ -88,10 +88,17 @@ function formatDisplayDate(dateStr: string): string {
 
 // ─── Main Component ───────────────────────────────────────
 export function AttendancePageClient({
-  weekDays, weekStart, weekEnd, shift,
+  weekDays: initialWeekDays, weekStart: initialWeekStart, weekEnd: initialWeekEnd, shift,
   teamMembers, selectedEmployeeId, selectedEmployeeName, canViewTeam,
 }: Props) {
   const router = useRouter();
+
+  // Client-side week state (initialized from server props)
+  const [weekDays, setWeekDays] = useState<DayData[]>(initialWeekDays);
+  const [weekStart, setWeekStart] = useState(initialWeekStart);
+  const [weekEnd, setWeekEnd] = useState(initialWeekEnd);
+  const [weekLoading, setWeekLoading] = useState(false);
+
   const [showRegForm, setShowRegForm] = useState(false);
   const [regLoading, setRegLoading] = useState(false);
   const [regSuccess, setRegSuccess] = useState("");
@@ -140,22 +147,42 @@ export function AttendancePageClient({
   }, [now]);
   const nowPos = ((nowIST - timelineStart) / timelineRange) * 100;
 
+  // Client-side week fetch (no page reload)
+  const fetchWeek = useCallback(async (ws: string) => {
+    setWeekLoading(true);
+    setExpandedDay(null);
+    try {
+      const params = new URLSearchParams({ week: ws });
+      if (selectedEmployeeId) params.set("employee", selectedEmployeeId);
+      const res = await fetch(`/api/attendance/weekly?${params.toString()}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setWeekDays(json.data.weekDays);
+        setWeekStart(json.data.weekStart);
+        setWeekEnd(json.data.weekEnd);
+      }
+    } catch (err) {
+      console.error("Failed to fetch week data:", err);
+    } finally {
+      setWeekLoading(false);
+    }
+  }, [selectedEmployeeId]);
+
   // Navigation
-  const navigateWeek = (dir: number) => {
+  const navigateWeek = useCallback((dir: number) => {
     const d = new Date(weekStart + "T00:00:00");
     d.setDate(d.getDate() + dir * 7);
     const ws = d.toISOString().split("T")[0];
-    const base = selectedEmployeeId
-      ? `/dashboard/attendance?employee=${selectedEmployeeId}&week=${ws}`
-      : `/dashboard/attendance?week=${ws}`;
-    router.push(base);
-  };
+    fetchWeek(ws);
+  }, [weekStart, fetchWeek]);
 
-  const goToThisWeek = () => {
-    router.push(selectedEmployeeId
-      ? `/dashboard/attendance?employee=${selectedEmployeeId}`
-      : `/dashboard/attendance`);
-  };
+  const goToThisWeek = useCallback(() => {
+    const now = new Date();
+    const d = new Date(now);
+    d.setDate(d.getDate() - d.getDay());
+    const ws = d.toISOString().split("T")[0];
+    fetchWeek(ws);
+  }, [fetchWeek]);
 
   const handleRegSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,7 +342,13 @@ export function AttendancePageClient({
       )}
 
       {/* Weekly Timeline Card */}
-      <Card className="!p-0 overflow-hidden">
+      <Card className="!p-0 overflow-hidden relative">
+        {/* Loading overlay */}
+        {weekLoading && (
+          <div className="absolute inset-0 bg-white/60 dark:bg-gray-900/60 z-10 flex items-center justify-center backdrop-blur-[1px] transition-opacity">
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         {/* Week navigation bar */}
         <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-1">
