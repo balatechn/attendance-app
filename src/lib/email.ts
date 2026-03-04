@@ -7,50 +7,26 @@ interface EmailOptions {
   html: string;
 }
 
-// Create transporter dynamically from DB config or env vars
-async function getTransporter() {
-  // Try DB config first (from Settings page)
-  try {
-    const config = await prisma.emailConfig.findFirst({
-      where: { isActive: true },
-    });
-    if (config) {
-      return {
-        transporter: nodemailer.createTransport({
-          host: config.host,
-          port: config.port,
-          secure: config.secure,
-          auth: {
-            user: config.username,
-            pass: config.password,
-          },
-        }),
-        from: `${config.fromName} <${config.fromEmail}>`,
-      };
-    }
-  } catch (error) {
-    console.error("Failed to load email config from DB:", error);
+// Create nodemailer transporter from environment variables
+function getTransporter() {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+    return null;
   }
 
-  // Fallback to environment variables
-  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-    return {
-      transporter: nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: false,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      }),
-      from:
-        process.env.EMAIL_FROM ||
-        "Attendance App <noreply@attendance.com>",
-    };
-  }
-
-  return null;
+  return {
+    transporter: nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    }),
+    from:
+      process.env.EMAIL_FROM ||
+      "Attendance App <noreply@attendance.com>",
+  };
 }
 
 async function getAdminEmails(): Promise<string[]> {
@@ -71,7 +47,7 @@ async function getAdminEmails(): Promise<string[]> {
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
-    const mailer = await getTransporter();
+    const mailer = getTransporter();
     if (!mailer) {
       console.error("Email not configured: No SMTP settings found in DB or environment");
       return { success: false, error: "Email not configured" };
