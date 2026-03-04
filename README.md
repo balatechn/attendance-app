@@ -34,6 +34,9 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
   - [Geofencing](#geofencing)
   - [Reports & Export](#reports--export)
   - [Email Notifications](#email-notifications)
+  - [Daily Email Report](#daily-email-report)
+  - [Self-Service Profile](#self-service-profile)
+  - [Movement Alert](#movement-alert)
   - [Settings & Master Data](#settings--master-data)
 - [Demo Credentials](#demo-credentials)
 - [Scripts Reference](#scripts-reference)
@@ -45,6 +48,7 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
 ## Features
 
 - **GPS-based Check-in/Check-out** — Verify employee location against geofence zones
+- **Check-in/Check-out Notes** — Optional comment box on every check-in/out, displayed in session timeline and admin reports
 - **Real-time Dashboard** — Live working status, timers, and daily statistics
 - **Management Dashboard** — Overview cards, attendance donut chart, location-wise summary, weekly trend, and recent activity feed
 - **Management Role** — Dedicated executive/supervisory role (auto-present, no check-in required, view & approve only)
@@ -52,18 +56,22 @@ A modern, full-featured **Attendance Management System** built as a Progressive 
 - **Shift Management** — Configurable work shifts with start/end times, grace periods, and standard work minutes
 - **Entity & Location Management** — Multi-entity organization structure with location assignment and cascading filters
 - **Entity-Based Visibility** — Strict data isolation — non-SUPER_ADMIN users only see data within their own entity
-- **Leave Management** — Apply, approve/reject leaves with balance tracking (fixed & accrual-based)
+- **Leave Management** — Apply, approve/reject leaves with balance tracking (fixed & accrual-based), admin balance management
 - **Attendance Regularization** — Request corrections for missed check-ins/outs with approval workflow
-- **Employee Management** — Add, edit, delete employees with temp password generation and email notifications
+- **Employee Management** — Add, edit, delete employees with designation, temp password generation, and email notifications
+- **Self-Service Profile** — Employees can edit their own designation, phone, department, entity, and location
 - **Password Reset** — Admin can reset passwords; temp password emailed to employee
+- **Forgot Password** — Self-service password reset via email verification code
 - **Geofencing** — Define office zones with lat/lng and radius; per-user geofence toggle
+- **Movement Alert** — Real-time location ping to detect employees moving away from the office during work
 - **Reports & Export** — 5-tab admin reporting with Excel export; personal reports with PDF export
+- **Daily Email Report** — Automated entity-wise attendance summary emailed daily (SUPER_ADMIN only)
 - **Cross-Device Sync** — Auto-refresh dashboard every 30s, server-authoritative timer
 - **Email Notifications** — Automated emails for all workflows with admin BCC
-- **Cron Jobs** — Scheduled attendance reminder emails
+- **Cron Jobs** — Scheduled attendance reminders, daily summary emails, leave balance reset
 - **Role-Based Access** — 6-tier role hierarchy (Employee → Super Admin) with granular permissions
 - **Progressive Web App** — Installable on mobile, offline check-in queue with auto-sync
-- **Dark Mode** — Full dark/light theme support
+- **Dark Mode** — Full dark/light theme support with toggle
 - **Responsive Design** — Mobile-first UI built with Tailwind CSS
 
 ---
@@ -216,7 +224,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```
 attendance-app/
 ├── prisma/
-│   ├── schema.prisma           # Database schema (17 models, 4 enums)
+│   ├── schema.prisma           # Database schema (18 models, 4 enums)
 │   └── seed.ts                 # Demo data seeder
 ├── public/
 │   ├── logo.webp               # App logo
@@ -236,17 +244,17 @@ attendance-app/
 │   │   │   ├── attendance/     # Check-in/out, daily log, team viewer
 │   │   │   ├── management/     # Management dashboard (charts, location stats)
 │   │   │   ├── leaves/         # Leave application & history
-│   │   │   ├── admin-reports/  # Admin reports (5-tab, Excel export)
+│   │   │   ├── admin-reports/  # Admin reports (5-tab + daily email, Excel export)
 │   │   │   ├── reports/        # Personal reports with PDF/Excel export
-│   │   │   ├── profile/        # User profile
-│   │   │   ├── employees/      # Employee management (add/edit/delete)
+│   │   │   ├── profile/        # Self-service profile editing
+│   │   │   ├── employees/      # Employee management (add/edit/delete with designation)
 │   │   │   ├── approvals/      # Leave & regularization approvals
 │   │   │   ├── geofence/       # Geofence zone management
 │   │   │   ├── regularization/ # Attendance regularization
 │   │   │   └── settings/       # Master data & email config
 │   │   └── api/
-│   │       ├── auth/           # NextAuth + password change + registration
-│   │       ├── attendance/     # Session, summary, sync
+│   │       ├── auth/           # NextAuth + password change + registration + forgot/reset password
+│   │       ├── attendance/     # Session (with notes), summary, sync, location-ping
 │   │       ├── employees/      # CRUD + reset password + delete
 │   │       ├── departments/    # Department CRUD
 │   │       ├── entities/       # Entity CRUD
@@ -254,11 +262,12 @@ attendance-app/
 │   │       ├── shifts/         # Shift CRUD
 │   │       ├── geofence/       # Geofence CRUD
 │   │       ├── regularization/ # Create + review
-│   │       ├── leaves/         # Apply, review, types
+│   │       ├── leaves/         # Apply, review, types, balance management
 │   │       ├── management/     # Management dashboard API
 │   │       ├── notifications/  # In-app notifications
-│   │       ├── reports/        # Admin reports + export API
-│   │       ├── cron/           # Scheduled attendance reminders
+│   │       ├── profile/        # Self-service profile update
+│   │       ├── reports/        # Admin reports + daily email report + export API
+│   │       ├── cron/           # Attendance reminders, daily summary, leave reset
 │   │       └── settings/       # App config + email config
 │   ├── components/
 │   │   └── ui/                 # Reusable UI components (Button, Card, Input, Badge, Select, etc.)
@@ -288,20 +297,20 @@ attendance-app/
 
 ## Database Schema
 
-### Models Overview (17 Models)
+### Models Overview (18 Models)
 
 | Model | Description |
 |---|---|
-| **User** | Employees with role, department, entity, location, shift, manager relations. Supports `geofenceEnabled` per-user toggle, `mustChangePassword`, `employeeCode`, `phone`, `avatar`. |
+| **User** | Employees with role, department, entity, location, shift, manager relations. Supports `geofenceEnabled` per-user toggle, `mustChangePassword`, `employeeCode`, `phone`, `designation`, `avatar`. |
 | **Department** | Organizational departments (code + name, soft-deletable via `isActive`) |
 | **Entity** | Legal/business entities (code + name + address). Has many locations and users. |
 | **Location** | Office locations tied to an entity (code + name + address) |
 | **Shift** | Work shift definitions with `startTime`/`endTime` (HH:mm), `graceMinutes`, `standardWorkMins`, `isDefault` |
-| **AttendanceSession** | Individual check-in/check-out events with GPS coordinates, address, deviceInfo, `isAutoOut` flag |
+| **AttendanceSession** | Individual check-in/check-out events with GPS coordinates, address, optional `note` (comment), deviceInfo, `isAutoOut` flag |
 | **DailySummary** | Aggregated daily stats (work mins, break mins, overtime, status). Unique per user + date. |
 | **Regularization** | Attendance correction requests (missed check-in/out, wrong time) with approval workflow |
 | **GeoFence** | Geofence zones (lat, lng, radius in meters) |
-| **LeaveType** | Leave categories with support for fixed allocation or monthly accrual |
+| **LeaveType** | Leave categories with support for fixed allocation or monthly accrual, min advance notice days, cert required after N days, carry-forward and max carry-forward days |
 | **LeaveBalance** | Per-user, per-year leave balance tracking (allocated, used, pending) |
 | **LeaveRequest** | Leave applications with date range, days count, and approval workflow |
 | **Notification** | In-app notifications with read/unread tracking |
@@ -347,15 +356,18 @@ LeaveType ── LeaveRequest (one-to-many)
 | GET/POST | `/api/auth/[...nextauth]` | NextAuth sign-in/sign-out/session |
 | POST | `/api/auth/register` | User registration with email verification |
 | POST | `/api/auth/change-password` | Change or reset password |
+| POST | `/api/auth/forgot-password` | Request password reset via email code |
+| POST | `/api/auth/reset-password` | Reset password using verification code |
 | POST | `/api/auth/send-code` | Send email verification code |
 | GET | `/api/auth/locations` | Get locations for registration dropdown |
 
 ### Attendance
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/attendance/session` | Check-in or check-out with GPS |
+| POST | `/api/attendance/session` | Check-in or check-out with GPS and optional note |
 | GET | `/api/attendance/summary` | Get daily summary for user |
 | POST | `/api/attendance/sync` | Sync offline attendance queue |
+| POST | `/api/attendance/location-ping` | Movement alert — ping current location during active session |
 
 ### Employees
 | Method | Endpoint | Description |
@@ -370,6 +382,8 @@ LeaveType ── LeaveRequest (one-to-many)
 | GET/POST | `/api/leaves` | List / apply for leave (entity-filtered) |
 | PUT | `/api/leaves/[id]/review` | Approve/reject leave request |
 | GET/POST | `/api/leaves/types` | List / create leave types |
+| POST | `/api/leaves/types/seed` | Seed default leave types |
+| GET/PUT | `/api/leaves/balance` | View / manage leave balances per employee |
 
 ### Regularization
 | Method | Endpoint | Description |
@@ -392,11 +406,17 @@ LeaveType ── LeaveRequest (one-to-many)
 |---|---|---|
 | GET | `/api/management` | Management dashboard data (overview, location stats, weekly trend, activity) |
 
+### Profile
+| Method | Endpoint | Description |
+|---|---|---|
+| PUT | `/api/profile` | Self-service profile update (designation, phone, department, entity, location) |
+
 ### Reports
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/reports/admin` | Admin reports (summary, daily, late, overtime, leave) with Excel export |
 | GET | `/api/reports/export` | Export attendance data (PDF/Excel) |
+| GET | `/api/reports/daily-email` | Entity-wise daily attendance summary email (SUPER_ADMIN only) |
 
 ### Notifications
 | Method | Endpoint | Description |
@@ -413,6 +433,8 @@ LeaveType ── LeaveRequest (one-to-many)
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/cron/attendance-reminders` | Scheduled daily attendance reminder emails |
+| GET | `/api/cron/daily-summary` | Automated daily summary email at 8 AM IST |
+| GET | `/api/cron/leave-reset` | Annual leave balance reset / monthly accrual |
 
 ---
 
@@ -476,6 +498,8 @@ SUPER_ADMIN > ADMIN > MANAGEMENT > HR_ADMIN > MANAGER > EMPLOYEE
 
 ### Attendance Tracking
 - **GPS-verified check-in/check-out** with geofence validation
+- **Optional notes/comments** — Add a note on each check-in or check-out (e.g., reason for late arrival, remote work info)
+- **Notes in reports** — Check-in/out notes appear in session timeline, admin daily view, and Excel export
 - **Live timer** showing current session duration with server-authoritative sync
 - **Shift-aware late detection** — late threshold based on assigned shift + grace minutes
 - **Shift-aware overtime** — overtime calculated against shift's standard work minutes
@@ -497,8 +521,10 @@ SUPER_ADMIN > ADMIN > MANAGEMENT > HR_ADMIN > MANAGER > EMPLOYEE
 ### Leave Management
 - **Leave types** — Configurable categories (Annual, Sick, Casual, etc.) with fixed or accrual-based allocation
 - **Balance tracking** — Per-user, per-year allocated/used/pending days
+- **Balance management** — Admin can view and adjust employee leave balances
+- **Policy rules** — Minimum advance notice days, medical certificate requirement after N days, carry-forward settings, max carry-forward days
 - **Application workflow** — Apply → Manager approval → Balance deducted
-- **Email notifications** — Auto-notify manager on application, notify employee on decision
+- **Email notifications** — Auto-notify manager on application (includes employee designation & location), notify employee on decision
 - **Entity-filtered** — Leave requests scoped by entity
 
 ### Regularization
@@ -509,7 +535,8 @@ SUPER_ADMIN > ADMIN > MANAGEMENT > HR_ADMIN > MANAGER > EMPLOYEE
 
 ### Employee Management
 - **Add employees** — Auto-generates temporary password, sends welcome email
-- **Edit employees** — Update name, email, phone, role, department, entity, location, shift, manager, geofence toggle, status
+- **Edit employees** — Update name, email, phone, designation, role, department, entity, location, shift, manager, geofence toggle, status
+- **Designation field** — Track employee job title/designation across the system
 - **Delete employees** — Cascade deletes all related records (sessions, summaries, leaves, regularizations, notifications, audit logs). Nullifies manager references on subordinates.
 - **Reset password** — Generate new temp password and email it; backup shown to admin
 - **Forced password change** — New employees must change temp password on first login
@@ -545,13 +572,13 @@ SUPER_ADMIN > ADMIN > MANAGEMENT > HR_ADMIN > MANAGER > EMPLOYEE
 - **Personal reports** — Daily/Monthly calendar view, filter by month
 - **Admin Reports (5 tabs):**
   - **Attendance Summary** — Per-employee present/absent/late/half-day/leave counts with total work hours and overtime (MANAGEMENT users show all working days as present)
-  - **Daily Attendance View** — All employees' status, check-in/out times, work hours for a single date (MANAGEMENT users show as "Present")
+  - **Daily Attendance View** — All employees' status, check-in/out times, notes, work hours for a single date (MANAGEMENT users show as "Present")
   - **Late Arrivals** — Employees ranked by late frequency with expandable date details
   - **Overtime Report** — Employees ranked by total OT hours with daily breakdown
   - **Leave Summary** — Allocated/used/pending/balance per leave type per employee
 - **Filters** — Date range picker, department, entity, location filters, quick presets (Today, 7 Days, 30 Days, This Month)
 - **PDF export** — Professional formatted attendance reports
-- **Excel export** — All admin reports exportable to .xlsx for payroll integration
+- **Excel export** — All admin reports exportable to .xlsx for payroll integration (includes check-in/out notes)
 - **Entity-filtered** — Non-SUPER_ADMIN users see only their entity's data in all reports
 
 ### Email Notifications
@@ -562,11 +589,29 @@ SUPER_ADMIN > ADMIN > MANAGEMENT > HR_ADMIN > MANAGER > EMPLOYEE
   - Welcome email (new employee with temp password)
   - Password reset email
   - Email verification code (registration)
-  - Leave application → Manager notification
+  - Forgot password verification code
+  - Leave application → Manager notification (includes designation & location)
   - Leave approval/rejection → Employee notification
   - Regularization request → Manager notification
   - Regularization decision → Employee notification
   - Daily attendance reminders (via cron)
+  - Daily attendance summary email (entity-wise, via cron)
+
+### Daily Email Report
+- **Entity-wise daily summary** — Automated email sent at 8 AM IST with entity-grouped attendance stats
+- **SUPER_ADMIN only** — Accessible from the "Daily Email Report" tab in Admin Reports
+- **Stats included** — Present, absent, late, on leave, half day counts per entity
+- **Manual trigger** — Can also be sent on-demand from the Admin Reports page
+
+### Self-Service Profile
+- **Editable fields** — Employees can update their own designation, phone, department, entity, and location
+- **Inline edit mode** — Toggle edit with pencil icon; dropdown selectors for department, entity, and location
+- **Authenticated** — Updates only the logged-in user's own record
+
+### Movement Alert
+- **Location ping** — Periodic GPS pings during active work sessions to detect movement
+- **Alert system** — Flags employees who move significantly away from their check-in location
+- **Admin visibility** — Movement alerts visible to admins for monitoring compliance
 
 ### Settings & Master Data
 - **Departments** — Create and manage organizational departments
