@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
-import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 import { AdminReportsClient } from "./admin-reports-client";
 
@@ -12,7 +11,7 @@ export default async function AdminReportsPage() {
   if (!session?.user) redirect("/login");
 
   const role = session.user.role as Role;
-  if (!hasPermission(role, "reports:view-all")) {
+  if (role !== "SUPER_ADMIN") {
     redirect("/dashboard");
   }
 

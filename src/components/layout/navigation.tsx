@@ -169,7 +169,10 @@ export function Sidebar() {
                 Admin
               </p>
             </div>
-            {ADMIN_NAV_ITEMS.map((item) => {
+            {ADMIN_NAV_ITEMS.filter((item) => {
+              if (item.href === "/dashboard/admin-reports") return role === "SUPER_ADMIN";
+              return true;
+            }).map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
                 <Link

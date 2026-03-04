@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { apiResponse, apiError } from "@/lib/api-utils";
-import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 import { formatIST } from "@/lib/datetime";
 import { eachDayOfInterval, getDay } from "date-fns";
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest) {
     if (!session?.user) return apiError("Unauthorized", 401);
 
     const role = session.user.role as Role;
-    if (!hasPermission(role, "reports:view-all")) {
+    if (role !== "SUPER_ADMIN") {
       return apiError("Forbidden", 403);
     }
 
