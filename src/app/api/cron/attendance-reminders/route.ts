@@ -30,8 +30,9 @@ export async function GET(request: NextRequest) {
     const { start, end } = getDayRange(now);
 
     // Get all active employees with their shifts and today's sessions
+    // Exclude MANAGEMENT role from reminders
     const employees = await prisma.user.findMany({
-      where: { isActive: true },
+      where: { isActive: true, role: { not: "MANAGEMENT" } },
       select: {
         id: true,
         name: true,
