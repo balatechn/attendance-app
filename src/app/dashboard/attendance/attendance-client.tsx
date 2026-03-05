@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { Card, Badge, Button, Input } from "@/components/ui";
 import { STATUS_COLORS } from "@/lib/constants";
 
@@ -93,8 +92,6 @@ export function AttendancePageClient({
   selectedEmployeeName,
   canViewTeam,
 }: Props) {
-  const router = useRouter();
-
   // Client-side month state
   const [days, setDays] = useState<DayData[]>(initialDays);
   const [year, setYear] = useState(initialYear);
@@ -102,6 +99,7 @@ export function AttendancePageClient({
   const [firstDayOfWeek, setFirstDayOfWeek] = useState(initialFirstDay);
   const [monthLabel, setMonthLabel] = useState(initialMonthLabel);
   const [loading, setLoading] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(selectedEmployeeId);
 
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
@@ -161,7 +159,7 @@ export function AttendancePageClient({
     setExpandedDay(null);
     try {
       const params = new URLSearchParams({ month: `${y}-${String(m).padStart(2, "0")}` });
-      if (selectedEmployeeId) params.set("employee", selectedEmployeeId);
+      if (selectedEmployee) params.set("employee", selectedEmployee);
       const res = await fetch(`/api/attendance/weekly?${params.toString()}`);
       const json = await res.json();
       if (json.success && json.data) {
@@ -176,7 +174,30 @@ export function AttendancePageClient({
     } finally {
       setLoading(false);
     }
-  }, [selectedEmployeeId]);
+  }, [selectedEmployee]);
+
+  // Fetch for a specific employee (used by employee selector)
+  const fetchMonthForEmployee = useCallback(async (y: number, m: number, empId: string | null) => {
+    setLoading(true);
+    setExpandedDay(null);
+    try {
+      const params = new URLSearchParams({ month: `${y}-${String(m).padStart(2, "0")}` });
+      if (empId) params.set("employee", empId);
+      const res = await fetch(`/api/attendance/weekly?${params.toString()}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setDays(json.data.days);
+        setYear(json.data.year);
+        setMonth(json.data.month);
+        setFirstDayOfWeek(json.data.firstDayOfWeek);
+        setMonthLabel(json.data.monthLabel);
+      }
+    } catch (err) {
+      console.error("Failed to fetch month data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const navigateMonth = useCallback((dir: number) => {
     let newMonth = month + dir;
@@ -237,18 +258,22 @@ export function AttendancePageClient({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Attendance</h2>
-          {selectedEmployeeName && (
-            <Badge variant="info" className="text-xs">Viewing: {selectedEmployeeName}</Badge>
+          {selectedEmployee && (
+            <Badge variant="info" className="text-xs">Viewing: {teamMembers.find(m => m.id === selectedEmployee)?.name || selectedEmployeeName}</Badge>
           )}
         </div>
         <div className="flex items-center gap-2">
           {canViewTeam && (
             <select
               className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 max-w-[200px]"
-              value={selectedEmployeeId || ""}
+              value={selectedEmployee || ""}
               onChange={(e) => {
                 const val = e.target.value;
-                router.push(val ? `/dashboard/attendance?employee=${val}` : "/dashboard/attendance");
+                // Use client-side fetch + URL update (no full reload)
+                const url = val ? `/dashboard/attendance?employee=${val}` : "/dashboard/attendance";
+                window.history.replaceState(null, "", url);
+                setSelectedEmployee(val || null);
+                fetchMonthForEmployee(year, month, val || null);
               }}
             >
               <option value="">My Attendance</option>
@@ -259,7 +284,7 @@ export function AttendancePageClient({
               ))}
             </select>
           )}
-          {!selectedEmployeeId && (
+          {!selectedEmployee && (
             <Button
               size="sm"
               variant={showRegForm ? "outline" : "primary"}
