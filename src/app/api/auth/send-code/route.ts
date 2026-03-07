@@ -74,10 +74,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       console.error("Send-code email failed:", result.error);
-      return apiError(
-        `Email sending failed: ${result.error instanceof Error ? result.error.message : String(result.error || "unknown")}`,
-        500
-      );
+      return apiError("Failed to send verification email. Please try again.", 500);
     }
 
     return apiResponse({ message: "Verification code sent" });
