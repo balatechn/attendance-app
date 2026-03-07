@@ -9,24 +9,24 @@ interface EmailOptions {
 
 // Create nodemailer transporter from environment variables
 function getTransporter() {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim();
+  const port = Number(process.env.SMTP_PORT?.trim()) || 587;
+
+  if (!host || !user) {
     return null;
   }
 
   return {
     transporter: nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
+      host,
+      port,
       secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+      auth: { user, pass },
     }),
     from:
-      process.env.EMAIL_FROM ||
-      process.env.SMTP_FROM ||
-      "AttendEase <no-reply@mailer.nationalgroupindia.com>",
+      (process.env.EMAIL_FROM || process.env.SMTP_FROM || "AttendEase <no-reply@mailer.nationalgroupindia.com>").trim(),
   };
 }
 
