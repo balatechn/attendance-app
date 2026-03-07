@@ -25,7 +25,8 @@ function getTransporter() {
     }),
     from:
       process.env.EMAIL_FROM ||
-      "Attendance App <noreply@attendance.com>",
+      process.env.SMTP_FROM ||
+      "AttendEase <no-reply@mailer.nationalgroupindia.com>",
   };
 }
 
